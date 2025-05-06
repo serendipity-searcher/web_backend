@@ -1,13 +1,14 @@
 #!/bin/bash
 
-python -m venv "backend_env"
+python -m venv "backend_venv"
 
-source backend_env/bin/activate
+source backend_venv/bin/activate
 
 pip install -r requirements.txt
 
-
 echo "INSTALLING SEARCHER FOR DMG..."
+
+cd ./data
 
 echo "(1 of 3) DOWNLOADING DATA... (this takes up to 30 minutes)"
 ./data/DOWNLOAD_DATA.sh
@@ -30,5 +31,6 @@ echo "BUCKET DETAILS:
 echo "see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/quickstart.html#configuration"
 ./data/DOWNLOAD_IMAGES.sh
 
+rm -rf ./backend_venv
 
 echo "INSTALLING SEARCHER FOR DMG DONE!"

@@ -7,5 +7,5 @@ x#!/bin/bash
 
 
 # no parameters
-python dump_DMG_API.py
+python ./src/dump_DMG_API.py
 

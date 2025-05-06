@@ -7,6 +7,6 @@ pathvalidate==3.2.3
 rdflib==7.1.4
 Requests==2.32.3
 skyfield==1.49
-tqdm==4.67.1
-tqdm==4.66.5
+# tqdm==4.67.1
+tqdm
 uvicorn==0.34.2
