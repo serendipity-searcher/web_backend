@@ -1,4 +1,4 @@
-x#!/bin/bash
+#!/bin/bash
 
 # source ~/home2-env/bin/activate
 

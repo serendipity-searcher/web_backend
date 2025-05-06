@@ -50,7 +50,7 @@ if __name__ == "__main__":
     args = parser.parse_args()
     save_name= args.file.rsplit(".", maxsplit=1)[0] + "_extracted.csv"
     # save_name = args.file.rsplit(".", maxsplit=1)[0] + "_extracted.parquet"
-    print(save_name)
+    print(f"SAVING TO {save_name}")
     
     with open(args.file) as orig_handle:
         txt = orig_handle.read()

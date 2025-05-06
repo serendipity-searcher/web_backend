@@ -61,23 +61,31 @@ def crawl(endpoint, params):
         return
 
 
-## PUBLIC DATA
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--save_path", help="path for saving downloaded images")
+    args = parser.parse_args()
 
-endpoint = base_url + public
-data = list(tqdm(crawl(endpoint, params))) #dict(itemsPerPage=1113))))
+    save_path = args.save_path if (args.save_path is not None) else "./dumps"
 
-today = dt.datetime.today().strftime("%Y-%m-%d")
-with open(f"../data/API_dump_public_{today}.json", "w") as handle:
-    json.dump(data, handle)
 
-## PRIVATE DATA
+    ## PUBLIC DATA
+    endpoint = base_url + public
+    data = list(tqdm(crawl(endpoint, params))) #dict(itemsPerPage=1113))))
+    
+    today = dt.datetime.today().strftime("%Y-%m-%d")
+    with open(save_path + f"/API_dump_public_{today}.json", "w") as handle:
+        json.dump(data, handle)
 
-endpoint = base_url + private
-data = list(tqdm(crawl(endpoint, params)))
-
-today = dt.datetime.today().strftime("%Y-%m-%d")
-with open(f"../data/API_dump_private_{today}.json", "w") as handle:
-    json.dump(data, handle)
+    
+    ## PRIVATE DATA
+    endpoint = base_url + private
+    data = list(tqdm(crawl(endpoint, params)))
+    
+    today = dt.datetime.today().strftime("%Y-%m-%d")
+    with open(save_path +  f"/API_dump_private_{today}.json", "w") as handle:
+        json.dump(data, handle)
 
 
 
