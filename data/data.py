@@ -292,7 +292,8 @@ class CollectionAccessor:
                  "production_date": CollectionAccessor.human_readable_dates(r.creation_time),
                  "design_place": all_or_onbekend(r.coin_place_label, ""),
                  "production_place": all_or_onbekend(r.creation_place_label, ""),
-                 "rights_attribution": display_attribution(r)
+                 "rights_attribution": display_attribution(r),
+                 "image_path": r.image_path
                 }
                 for i, r in sub.iterrows()]
 

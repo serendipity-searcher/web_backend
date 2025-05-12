@@ -86,15 +86,15 @@ def get_moon(ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"): #lat_degree
     return moon_force # IS in [0,1]
 
 @app.get("/linger-time")
-def linger_time_multiplier(ISO_8601_datetime=None, lat_degrees=51.05, long_degrees=3.71):
-    moon_force = get_moon(ISO_8601_datetime, lat_degrees, long_degrees)    
+def linger_time_multiplier(ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"):
+    moon_force = get_moon(ISO_8601_datetime, lat_long_degrees)    
     return 1-(moon_force/2)
+
 
 @app.get("/collections")
 def available_collections():
-    return {c_id: c.attrs["name"] for c_id, c in collections.items()}
+    return [dict(id=c_id, name=c.attrs["name"]) for c_id, c in collections.items()]
     
-
 @app.get("/{collection_id}")
 def collection_info(collection_id):
     cur_coll = get_collection(collection_id)
@@ -108,19 +108,25 @@ def object_details(collection_id, object_ids):
     sub = collections[collection_id].loc[object_ids] if object_ids else cur_coll
     return sub.coll.get_presentation_records(as_json=True)
 
-@app.get("/{collection_id}/list-models")
-def get_models(collection_id):
+@app.get("/{collection_id}/models")
+def available_models(collection_id):
     cur_search = searches[collection_id]
-    return {id(searcher): searcher.name for searcher in cur_search.searchers} 
+    return [dict(id=id(searcher), name=searcher.name) for searcher in cur_search.searchers]
 
 
 
 @app.get("/{collection_id}/search")
-def search_collection(collection_id, object_ids, concept, model_list):
+def search_collection(collection_id, object_ids=None, concept=None, model_list=None):
     cur_coll = get_collection(collection_id)
-    cur_records = cur_coll.loc[parse_id_list(object_ids)]
-    model_list = parse_id_list(model_list)
+
+    if (object_ids is None) or not object_ids or len(object_ids) < 1:
+        object_ids = list(cur_coll.sample(4).index)
+    else:
+        object_ids = parse_id_list(object_ids)
+    cur_records = cur_coll.loc[object_ids]
     cur_search = searches[collection_id]
+    model_list = parse_id_list(model_list) if (model_list is not None) else []  # s = search.turn_into_function(model_list)
+
     
     scores = cur_search(cur_records)
 
@@ -140,7 +146,8 @@ def search_collection(collection_id, object_ids, concept, model_list):
     return scores
 
 @app.get("/{collection_id}/search/sample")
-def sample_collection(collection_id, object_ids, concept, model_list, k=12, ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"):
+def sample_collection(collection_id, object_ids=None, concept=None, model_list=None, 
+                      k=12, ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"):
     cur_coll = get_collection(collection_id)
     cur_search = searches[collection_id]
     moon_force = get_moon(ISO_8601_datetime, lat_long_degrees=lat_long_degrees)
@@ -154,7 +161,8 @@ def sample_collection(collection_id, object_ids, concept, model_list, k=12, ISO_
 
 
 @app.get("/{collection_id}/search/order")
-def order_collection(collection_id, object_ids, concept, model_list, skip=None, limit=None, reverse=False):
+def order_collection(collection_id, object_ids=None, concept=None, model_list=None, 
+                     skip=None, limit=None, reverse=False, presentation=True):
     cur_coll = get_collection(collection_id)
     cur_search = searches[collection_id]
     reverse = str(reverse).lower() == "true" 
@@ -167,17 +175,21 @@ def order_collection(collection_id, object_ids, concept, model_list, skip=None, 
     if skip and limit: 
         limit = skip + limit
     ordered = ordered.iloc[skip:limit]
-    return ordered.coll.get_presentation_records(as_json=True)
+    return ordered.coll.get_presentation_records(as_json=True) if presentation else ordered
 
 
 @app.get("/{collection_id}/search/order/filter")
-def filter_collection(collection_id, object_ids, concept, model_list, filter_text, skip=None, limit=None, reverse=False):
-    cur_coll = get_collection(collection_id)
-    cur_search = searches[collection_id]
+def filter_collection(collection_id, object_ids=None, concept=None, model_list=None, 
+                      filter_text=None, skip=None, limit=None, reverse=False):
+    if filter_text is None:
+        filter_text = ""
+    # cur_coll = get_collection(collection_id)
+    # cur_search = searches[collection_id]
 
-    scores = search_collection(collection_id, object_ids, concept, model_list)
-    ordered = order_collection(collection_id, object_ids, concept, model_list, skip=skip, limit=limit, reverse=reverse)
-    keep = cur_coll.coll.filter(filter_text)
+    # scores = search_collection(collection_id, object_ids, concept, model_list)
+    ordered = order_collection(collection_id, object_ids, concept, model_list, skip=skip, limit=limit, reverse=reverse, presentation=False)
+    print(ordered)
+    keep = ordered.coll.filter(filter_text)
     return ordered[keep.loc[ordered.index]]
 
 
