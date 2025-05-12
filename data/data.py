@@ -11,6 +11,11 @@ import datetime as dt
 from edtf import parse_edtf
 
 
+def get_latest(directory, contains=""):
+    files = [f for f in sorted(glob(directory+"/*")) if contains in f]
+    if not files: raise ValueError(f"{directory} contains no files with substring {contains}")
+    return files[-1]
+
 # as documented here: https://pandas.pydata.org/docs/development/extending.html
 @pd.api.extensions.register_dataframe_accessor("emb_space")
 class EmbeddingSpaceAccessor:   
@@ -302,7 +307,6 @@ class CollectionAccessor:
          - All operations preserve order (using boolean series, 
          whose order is the same as that of the original DF, to index), so this
          function may readily be used on on sorted (i.e. scored) data. (NOT TESTED)
-         - 
         """
 
         # TEXTs
