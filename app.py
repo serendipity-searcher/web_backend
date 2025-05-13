@@ -22,7 +22,7 @@ from moon import MOON, Moon
 
 def init_DMG():
     image_folder = "./data/images/DMG"
-    image_handler = ImageHandler(image_folder=image_folder)
+    image_handler = ImageHandler(image_folder=image_folder, keep_prefix=True)
 
     dmg_meta = dict(name="Design Museum Gent (public & private)", id_="DMG_2025-05-06",
                 creation_timestamp="2025-05-06")
@@ -94,11 +94,13 @@ def linger_time_multiplier(ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"
 @app.get("/collections")
 def available_collections():
     return [dict(id=c_id, name=c.attrs["name"]) for c_id, c in collections.items()]
-    
+
+
 @app.get("/{collection_id}")
 def collection_info(collection_id):
     cur_coll = get_collection(collection_id)
     return cur_coll.coll.info()
+
 
 @app.get("/{collection_id}/object-details")
 def object_details(collection_id, object_ids):
@@ -107,6 +109,7 @@ def object_details(collection_id, object_ids):
     object_ids = parse_id_list(object_ids)
     sub = collections[collection_id].loc[object_ids] if object_ids else cur_coll
     return sub.coll.get_presentation_records(as_json=True)
+
 
 @app.get("/{collection_id}/models")
 def available_models(collection_id):

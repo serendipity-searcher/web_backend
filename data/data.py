@@ -47,7 +47,7 @@ class ImageHandler:
     #  - OBJECT NUMBER (from path)
     #  - 
     def __init__(self, image_folder, keep_prefix=True):
-        paths = pd.Series(glob(image_folder+"/*/*"), name="image_path")
+        paths = pd.Series(glob(image_folder+"/*/*"), name="image_path").fillna("")
         if not keep_prefix: 
             paths = paths.str.replace(image_folder, "")
         obj_nums = self.object_number_from_path(paths)
@@ -254,7 +254,7 @@ class CollectionAccessor:
     ### ROUTE FUNCTIONS
 
     def get_presentation_records(self, object_numbers=None, as_json=True):    
-        sub = self._obj[self.presentation_cols].fillna("")
+        sub = self._obj[self.presentation_cols + ["image_path"]].fillna("")
         if object_numbers is not None: sub = sub.loc[object_numbers]
         
         cutoffs = {"title": 50, "description": 300}
