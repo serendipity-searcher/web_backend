@@ -118,7 +118,7 @@ if __name__ == "__main__":
     print(f"WTF: {full[time_cols]}")
     full[time_cols] = full[time_cols].replace({"/": None, "..": None})#.fillna("")
     print(f"WTF 2: {full[time_cols]}")
-    print(f"WTF 2: {full[time_cols].replace({"/": None, "..": None})}")
+    # print(f"WTF 2: {full[time_cols].replace({"/": None, "..": None})}")
 
     
     full["is_public"] = bool(args.is_public)
