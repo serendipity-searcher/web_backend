@@ -16,7 +16,7 @@ import pandas as pd
 
 from data.data import CollectionAccessor, ImageHandler#, EmbeddingSpaceAccessor
 
-from search import Search, Randomiser #GraphSearcher, EmbeddingSearcher
+from search import Search, Randomiser, Equaliser #GraphSearcher, EmbeddingSearcher
 from moon import MOON, Moon
 
 
@@ -106,6 +106,12 @@ def collection_info(collection_id):
     return cur_coll.coll.info()
 
 
+@app.get("/{collection_id}/models")
+def available_models(collection_id):
+    cur_search = searches[collection_id]
+    return [dict(id=searcher.id, name=searcher.name) for searcher in cur_search.searchers]
+
+
 @app.get("/{collection_id}/object-details")
 def object_details(collection_id, object_ids):
     cur_coll = get_collection(collection_id)
@@ -115,15 +121,9 @@ def object_details(collection_id, object_ids):
     return sub.coll.get_presentation_records(as_json=True)
 
 
-@app.get("/{collection_id}/models")
-def available_models(collection_id):
-    cur_search = searches[collection_id]
-    return [dict(id=id(searcher), name=searcher.name) for searcher in cur_search.searchers]
-
-
 
 @app.get("/{collection_id}/search")
-def search_collection(collection_id, object_ids=[], concept=None, model_ids=[]):
+def search_collection(collection_id, object_ids=None, concept=None, model_ids=[]):
     cur_coll = get_collection(collection_id)
 
     if (object_ids is None) or not object_ids or len(object_ids) < 1:
@@ -132,14 +132,18 @@ def search_collection(collection_id, object_ids=[], concept=None, model_ids=[]):
         object_ids = parse_id_list(object_ids)
     cur_records = cur_coll.loc[object_ids]
     cur_search = searches[collection_id]
-    model_ids = parse_id_list(model_ids) #if (model_ids is not None) else []
+    if (model_ids is not None):
+        model_ids = parse_id_list(model_ids)
+        scores = cur_search(cur_records, model_ids)
+    else:
+        eq = Equaliser(cur_coll)
+        scores = eq(cur_records)
     
     
     # s = cur_search.turn_into_function(model_ids)
 
     # scores = s(cur_records)
     
-    scores = cur_search(cur_records, model_ids)
 
     # if is_cached(collection_id, object_ids, concept, model_ids):
     #     return get_cached(collection_id, object_ids, concept, model_ids)
@@ -166,7 +170,7 @@ def sample_collection(collection_id, object_ids=None, concept=None, model_ids=No
 
 
     scores = search_collection(collection_id, object_ids, concept, model_ids)
-    rand_recs = cur_search.sample(cur_coll, temp=moon_force, size=k)
+    rand_recs = cur_search.sample(cur_coll, scores=scores, temp=moon_force, size=k)
     return rand_recs.coll.get_presentation_records(as_json=True)
 
 

@@ -104,6 +104,15 @@ class Searcher:
         print("HELLO", self)
         return self.id
 
+class Equaliser(Searcher):
+    def __init__(self, coll, name="Equaliser"):
+        super().__init__(name)
+        self.index = coll.index
+
+    def __call__(self, records):
+        rand_scores = pd.Series([1/len(self.index)]*len(self.index), index=self.index, name=self.id)
+        return rand_scores
+
 
 class Randomiser(Searcher):
     def __init__(self, coll, name="Randomiser"):
