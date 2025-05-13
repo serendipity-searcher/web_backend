@@ -1,0 +1,13 @@
+services:
+  web_backend:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    env_file:
+      - .env.docker
+    ports:
+      - "8080:8080"
+    volumes:
+      - ${DATA_IMAGES}:/app/data/images
+      - ${DATA_DUMPS}:/app/data/dumps
+    restart: unless-stopped

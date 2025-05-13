@@ -1,0 +1,16 @@
+# Data files
+data/images/
+data/dumps/
+
+# Python cache files
+__pycache__/
+*.pyc
+*.pyo
+
+# Version control files
+.git/
+.gitignore
+
+# Environment files
+.env
+.env.docker
