@@ -14,7 +14,7 @@ import pandas as pd
 
 
 
-from data.data import get_latest, CollectionAccessor, ImageHandler#, EmbeddingSpaceAccessor
+from data.data import CollectionAccessor, ImageHandler#, EmbeddingSpaceAccessor
 
 from search import Search, Randomiser #GraphSearcher, EmbeddingSearcher
 from moon import MOON, Moon
@@ -22,18 +22,22 @@ from moon import MOON, Moon
 
 def init_DMG():
     image_folder = "./data/images/DMG"
-    image_handler = ImageHandler(image_folder=image_folder, keep_prefix=True)
+    image_handler = ImageHandler(image_folder=image_folder, keep_prefix=False)
 
-    dmg_meta = dict(name="Design Museum Gent (public & private)", id_="DMG_2025-05-06",
-                creation_timestamp="2025-05-06")
-    df = CollectionAccessor.get_DMG(pub_path=get_latest("./data/dumps", contains="public"),
-                                     priv_path=get_latest("./data/dumps", contains="private"),
+    time_stamp, pub_file, priv_file = CollectionAccessor.get_latest_dump("./data/dumps")
+
+    
+    dmg_meta = dict(name="Design Museum Gent (public & private)", id_="DMG_"+time_stamp,
+                creation_timestamp=time_stamp)
+    df = CollectionAccessor.get_DMG(pub_path=pub_file, #get_latest("./data/dumps", contains="public"),
+                                     priv_path=priv_file, #get_latest("./data/dumps", contains="private"),
                                      rights_path="./data/rights.csv",
                                      image_handler=image_handler,
                                      **dmg_meta)
     
-    rand = Randomiser(df)
-    s = Search([rand])
+    rand = Randomiser(df, name="Randomiser")
+    rand2 = Randomiser(df, name="Randomiser")
+    s = Search([rand, rand2])
     return df, s
 
 @asynccontextmanager
@@ -119,7 +123,7 @@ def available_models(collection_id):
 
 
 @app.get("/{collection_id}/search")
-def search_collection(collection_id, object_ids=None, concept=None, model_list=None):
+def search_collection(collection_id, object_ids=[], concept=None, model_ids=[]):
     cur_coll = get_collection(collection_id)
 
     if (object_ids is None) or not object_ids or len(object_ids) < 1:
@@ -128,15 +132,19 @@ def search_collection(collection_id, object_ids=None, concept=None, model_list=N
         object_ids = parse_id_list(object_ids)
     cur_records = cur_coll.loc[object_ids]
     cur_search = searches[collection_id]
-    model_list = parse_id_list(model_list) if (model_list is not None) else []  # s = search.turn_into_function(model_list)
-
+    model_ids = parse_id_list(model_ids) #if (model_ids is not None) else []
     
-    scores = cur_search(cur_records)
+    
+    # s = cur_search.turn_into_function(model_ids)
 
-    # if is_cached(collection_id, object_ids, concept, model_list):
-    #     return get_cached(collection_id, object_ids, concept, model_list)
+    # scores = s(cur_records)
+    
+    scores = cur_search(cur_records, model_ids)
+
+    # if is_cached(collection_id, object_ids, concept, model_ids):
+    #     return get_cached(collection_id, object_ids, concept, model_ids)
         
-    # s = search.turn_into_function(model_list)
+    # s = search.turn_into_function(model_ids)
     
     # object_scores = s(object_ids)
     # concept_scores = concept_search(concept)
@@ -145,11 +153,11 @@ def search_collection(collection_id, object_ids=None, concept=None, model_list=N
 
     # diversify(scores)
 
-    # cache_search(object_ids, concept, model_list, scores)
+    # cache_search(object_ids, concept, model_ids, scores)
     return scores
 
 @app.get("/{collection_id}/search/sample")
-def sample_collection(collection_id, object_ids=None, concept=None, model_list=None, 
+def sample_collection(collection_id, object_ids=None, concept=None, model_ids=None, 
                       k=12, ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"):
     cur_coll = get_collection(collection_id)
     cur_search = searches[collection_id]
@@ -157,20 +165,20 @@ def sample_collection(collection_id, object_ids=None, concept=None, model_list=N
     k = int(k)
 
 
-    scores = search_collection(collection_id, object_ids, concept, model_list)
+    scores = search_collection(collection_id, object_ids, concept, model_ids)
     rand_recs = cur_search.sample(cur_coll, temp=moon_force, size=k)
     return rand_recs.coll.get_presentation_records(as_json=True)
 
 
 
 @app.get("/{collection_id}/search/order")
-def order_collection(collection_id, object_ids=None, concept=None, model_list=None, 
+def order_collection(collection_id, object_ids=None, concept=None, model_ids=None, 
                      skip=None, limit=None, reverse=False, presentation=True):
     cur_coll = get_collection(collection_id)
     cur_search = searches[collection_id]
     reverse = str(reverse).lower() == "true" 
     
-    scores = search_collection(collection_id, object_ids, concept, model_list)
+    scores = search_collection(collection_id, object_ids, concept, model_ids)
     
     ordered = cur_search.order(cur_coll, scores, reverse=reverse)
     if skip: skip = int(skip)
@@ -182,18 +190,18 @@ def order_collection(collection_id, object_ids=None, concept=None, model_list=No
 
 
 @app.get("/{collection_id}/search/order/filter")
-def filter_collection(collection_id, object_ids=None, concept=None, model_list=None, 
+def filter_collection(collection_id, object_ids=None, concept=None, model_ids=None, 
                       filter_text=None, skip=None, limit=None, reverse=False):
     if filter_text is None:
         filter_text = ""
     # cur_coll = get_collection(collection_id)
     # cur_search = searches[collection_id]
 
-    # scores = search_collection(collection_id, object_ids, concept, model_list)
-    ordered = order_collection(collection_id, object_ids, concept, model_list, skip=skip, limit=limit, reverse=reverse, presentation=False)
+    # scores = search_collection(collection_id, object_ids, concept, model_ids)
+    ordered = order_collection(collection_id, object_ids, concept, model_ids, skip=skip, limit=limit, reverse=reverse, presentation=False)
     print(ordered)
-    keep = ordered.coll.filter(filter_text)
-    return ordered[keep.loc[ordered.index]]
+    # keep = ordered.coll.filter(filter_text)
+    return []#ordered[keep.loc[ordered.index]]
 
 
 if __name__ == "__main__":

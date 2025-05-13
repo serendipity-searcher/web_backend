@@ -4,6 +4,7 @@ fastapi==0.115.12
 imageio==2.35.1
 matplotlib==3.10.3
 networkx==3.3
+numpy
 pandas==2.2.3
 pathvalidate==3.2.3
 rdflib==7.1.4

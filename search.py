@@ -16,8 +16,9 @@ import imageio.v3 as iio
 # from PIL import Image
 
 
-import torch
-from sentence_transformers import util
+# import torch
+# from sentence_transformers import SentenceTransformer, util
+
 
 from collections import Counter
 import networkx as nx
@@ -30,18 +31,35 @@ class Search:
         self.cur_recs = None
         self.cur_scores = None
 
-    def store_search(self, recs, scores):
+    def cache_search(self, recs, searcher_ids, scores):
         self.cur_recs = recs
+        self.cur_searcher_ids = searcher_ids
         self.cur_scores = scores
+
+    def get_cached_search(self, recs, searcher_ids):
+        if recs.equals(self.cur_recs) and (searcher_ids == self.cur_searcher_ids):
+            return self.cur_scores
+        return None
     
-    def __call__(self, recs, coll=None, return_df=False):
+    def __call__(self, recs, searcher_ids=None, return_df=False):
+        cached_scores = self.get_cached_search(recs, searcher_ids)
+        if cached_scores is not None: return cached_scores
+        
+        if searcher_ids is not None:
+            if len(searcher_ids) < 1:
+                raise ValueError("Searching with no searcher (aka model) not defined! (This logic is implemented externally.)")
+            else:
+                cur_searchers = [s for s in self.searchers for s_id in searcher_ids if id(s) == s_id]
+        else:
+            cur_searchers = self.searchers
+            
         searcher_scores = [s(recs) for s in self.searchers]
         searcher_scores = pd.DataFrame({s.name: s for s in searcher_scores})
         searcher_scores.loc[recs.index] = 0.
         
         merged_scores = self.merge_scores(searcher_scores)        
 
-        self.store_search(recs, merged_scores)
+        self.cache_search(recs, searcher_ids, merged_scores)
         
         if return_df:
             searcher_scores["avg"] = merged_scores
@@ -73,9 +91,18 @@ class Search:
             return coll.iloc[sort_idx].iloc[::-1]
         return coll.iloc[sort_idx]
 
+    
 class Searcher:
+    serial_number = 0
     def __init__(self, name):
         self.name = name
+
+        self.id = name + str(Searcher.serial_number)
+        Searcher.serial_number += 1
+
+    def __id__(self):
+        print("HELLO", self)
+        return self.id
 
 
 class Randomiser(Searcher):
@@ -84,7 +111,7 @@ class Randomiser(Searcher):
         self.index = coll.index
 
     def __call__(self, records):
-        rand_scores = pd.Series(rand.random(size=len(self.index)), index=self.index, name=self.name)
+        rand_scores = pd.Series(rand.random(size=len(self.index)), index=self.index, name=self.id)
         return rand_scores
 
 
@@ -121,7 +148,7 @@ class GraphSearcher(Searcher):
         dists = [nx.shortest_path_length(self.G, source=objnum, target=None) for objnum in records.index]
 
         raw_scores = pd.Series([np.mean([(d[obj_num] if obj_num in d else 10) for d in dists]) for obj_num in self.obj_nodes], 
-                       index=self.obj_nodes, name=self.name)
+                       index=self.obj_nodes, name=self.id)
         return self.dist2sim(raw_scores)
 
     @staticmethod
@@ -211,7 +238,6 @@ class EmbeddingSearcher(Searcher):
 
 
 
-from sentence_transformers import SentenceTransformer#, util
 
 class TextEmbeddingSearcher(EmbeddingSearcher):
     def __init__(self, space_df, sim_func=None, norm_scores=True, name="TextEmbeddingSeacher"):
@@ -220,6 +246,6 @@ class TextEmbeddingSearcher(EmbeddingSearcher):
         
     def __call__(self, text):
         vec = self.embedder.encode(text)
-        return pd.Series(self.rank_vector(vec), index=self.space.index, name=self.name)
+        return pd.Series(self.rank_vector(vec), index=self.space.index, name=self.id)
 
   

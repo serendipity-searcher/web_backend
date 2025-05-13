@@ -130,3 +130,4 @@ if __name__ == "__main__":
     # # this_minute = dt.datetime.today().strftime("%Y-%m-%dT%H-%M")
     imploded.to_csv(save_name, index=False, quoting=csv.QUOTE_ALL, quotechar='"')
     # imploded.to_parquet(save_name, index=False, compression=None)
+

@@ -11,10 +11,10 @@ import datetime as dt
 from edtf import parse_edtf
 
 
-def get_latest(directory, contains=""):
-    files = [f for f in sorted(glob(directory+"/*")) if contains in f]
-    if not files: raise ValueError(f"{directory} contains no files with substring {contains}")
-    return files[-1]
+# def get_latest(directory, contains=""):
+#     files = [f for f in sorted(glob(directory+"/*")) if contains in f]
+#     if not files: raise ValueError(f"{directory} contains no files with substring {contains}")
+#     return files[-1]
 
 # as documented here: https://pandas.pydata.org/docs/development/extending.html
 @pd.api.extensions.register_dataframe_accessor("emb_space")
@@ -154,6 +154,18 @@ class CollectionAccessor:
             return cls.parsed_dates_memo[date]
         return series.progress_apply(memoised)
 
+    @staticmethod
+    def get_latest_dump(directory):
+        public = sorted(glob(directory+ "/*_public_*.json"))[-1]
+        private = sorted(glob(directory+ "/*_private_*.json"))[-1]
+        print(public, private)
+        time_stamp = re.match(".*/API_dump_public_(.+).json", public).group(1)
+        return time_stamp, public.replace(".json", "_extracted.csv"), private.replace(".json", "_extracted.csv")
+
+    # @staticmethod
+    # def metadata_from_file(f):
+        
+        
         
     
     @classmethod
@@ -164,16 +176,18 @@ class CollectionAccessor:
 
         df = pd.concat([pub, priv.loc[priv.index.difference(pub.index)]])
         df = df.join(rights)
+
         
         df = df.join(image_handler._obj, how="left")
-        
+
 
         assert ("name" in metadata) and ("id_" in metadata) and ("creation_timestamp" in metadata)
         df.attrs = metadata
 
         ### PARSING
         df = df.apply(cls.parse_lists)
-        
+
+
         ### TIME STUFF
         df[cls.time_cols] = df[cls.time_cols].replace({"/": None, "..": None})#.fillna(None)
         ### REMOVE: PART OF EXTRACTION
