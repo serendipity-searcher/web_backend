@@ -6,7 +6,7 @@ services:
     env_file:
       - .env
     ports:
-      - "8080:8080"
+      - "${PORT}:${PORT}"
     volumes:
       - ${DATA_IMAGES}:/app/data/images
       - ${DATA_DUMPS}:/app/data/dumps
