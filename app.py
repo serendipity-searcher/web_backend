@@ -5,6 +5,9 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
+from dotenv import load_dotenv
+load_dotenv()
+
 from contextlib import asynccontextmanager
 import uvicorn
 import json
