@@ -5,9 +5,6 @@ from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
-from dotenv import load_dotenv
-load_dotenv()
-
 from contextlib import asynccontextmanager
 import uvicorn
 import json
@@ -29,7 +26,7 @@ def init_DMG():
 
     time_stamp, pub_file, priv_file = CollectionAccessor.get_latest_dump("./data/dumps")
 
-
+    
     dmg_meta = dict(name="Design Museum Gent (public & private)", id_="DMG_"+time_stamp,
                 creation_timestamp=time_stamp)
     df = CollectionAccessor.get_DMG(pub_path=pub_file, #get_latest("./data/dumps", contains="public"),
@@ -37,7 +34,7 @@ def init_DMG():
                                      rights_path="./data/rights.csv",
                                      image_handler=image_handler,
                                      **dmg_meta)
-
+    
     rand = Randomiser(df, name="Randomiser")
     rand2 = Randomiser(df, name="Randomiser")
     s = Search([rand, rand2])
@@ -48,7 +45,7 @@ async def lifespan(app: FastAPI):
     global moon
     global collections
     global searches
-
+    
 
     moon = Moon()
 
@@ -63,8 +60,6 @@ async def lifespan(app: FastAPI):
 
 
 app = FastAPI(lifespan=lifespan)
-
-app.mount("/images", StaticFiles(directory="data/images"), name="static")
 
 app.add_middleware(
     CORSMiddleware,
@@ -96,7 +91,7 @@ def get_moon(ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"): #lat_degree
 
 @app.get("/linger-time")
 def linger_time_multiplier(ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"):
-    moon_force = get_moon(ISO_8601_datetime, lat_long_degrees)
+    moon_force = get_moon(ISO_8601_datetime, lat_long_degrees)    
     return 1-(moon_force/2)
 
 
@@ -120,7 +115,7 @@ def available_models(collection_id):
 @app.get("/{collection_id}/object-details")
 def object_details(collection_id, object_ids):
     cur_coll = get_collection(collection_id)
-
+    
     object_ids = parse_id_list(object_ids)
     sub = collections[collection_id].loc[object_ids] if object_ids else cur_coll
     return sub.coll.get_presentation_records(as_json=True)
@@ -143,18 +138,18 @@ def search_collection(collection_id, object_ids=None, concept=None, model_ids=[]
     else:
         eq = Equaliser(cur_coll)
         scores = eq(cur_records)
-
-
+    
+    
     # s = cur_search.turn_into_function(model_ids)
 
     # scores = s(cur_records)
-
+    
 
     # if is_cached(collection_id, object_ids, concept, model_ids):
     #     return get_cached(collection_id, object_ids, concept, model_ids)
-
+        
     # s = search.turn_into_function(model_ids)
-
+    
     # object_scores = s(object_ids)
     # concept_scores = concept_search(concept)
     # # IMPORTANT: mean(mean(GS, SS, VS), CS) != mean(GS, SS, VS, CS) (because population sizes differ)
@@ -166,7 +161,7 @@ def search_collection(collection_id, object_ids=None, concept=None, model_ids=[]
     return scores
 
 @app.get("/{collection_id}/search/sample")
-def sample_collection(collection_id, object_ids=None, concept=None, model_ids=None,
+def sample_collection(collection_id, object_ids=None, concept=None, model_ids=None, 
                       k=12, ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"):
     cur_coll = get_collection(collection_id)
     cur_search = searches[collection_id]
@@ -181,32 +176,38 @@ def sample_collection(collection_id, object_ids=None, concept=None, model_ids=No
 
 
 @app.get("/{collection_id}/search/order")
-def order_collection(collection_id, object_ids=None, concept=None, model_ids=None,
+def order_collection(collection_id, object_ids=None, concept=None, model_ids=None, 
                      skip=None, limit=None, reverse=False, presentation=True):
     cur_coll = get_collection(collection_id)
     cur_search = searches[collection_id]
-    reverse = str(reverse).lower() == "true"
-
+    reverse = str(reverse).lower() == "true" 
+    
     scores = search_collection(collection_id, object_ids, concept, model_ids)
-
+    
     ordered = cur_search.order(cur_coll, scores, reverse=reverse)
     if skip: skip = int(skip)
     if limit: limit = int(limit)
-    if skip and limit:
+    if skip and limit: 
         limit = skip + limit
     ordered = ordered.iloc[skip:limit]
     return ordered.coll.get_presentation_records(as_json=True) if presentation else ordered
 
 
 @app.get("/{collection_id}/search/order/filter")
-def filter_collection(collection_id, object_ids=None, concept=None, model_ids=None,
+def filter_collection(collection_id, object_ids=None, concept=None, model_ids=None, 
                       filter_text=None, skip=None, limit=None, reverse=False):
     if filter_text is None:
         filter_text = ""
-    ordered = order_collection(collection_id, object_ids, concept, model_ids, 
-                               skip=skip, limit=limit, reverse=reverse, presentation=False)
+    # cur_coll = get_collection(collection_id)
+    # cur_search = searches[collection_id]
+
+    # scores = search_collection(collection_id, object_ids, concept, model_ids)
+    ordered = order_collection(collection_id, object_ids, concept, model_ids, skip=skip, limit=limit, reverse=reverse, presentation=False)
     filtered = ordered.coll.filter(filter_text)
-    return filtered.coll.get_presentation_records(as_json=True)#ordered[keep.loc[ordered.index]]
+    # print(ordered)
+    # keep = ordered.coll.filter(filter_text)
+    # return ordered[keep.loc[ordered.index]]
+    return filtered.coll.get_presentation_records(as_json=True)
 
 
 if __name__ == "__main__":

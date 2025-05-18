@@ -10,6 +10,7 @@ import re
 import datetime as dt
 from edtf import parse_edtf
 
+import umap.umap_ as umap
 
 # def get_latest(directory, contains=""):
 #     files = [f for f in sorted(glob(directory+"/*")) if contains in f]
@@ -20,44 +21,61 @@ from edtf import parse_edtf
 @pd.api.extensions.register_dataframe_accessor("emb_space")
 class EmbeddingSpaceAccessor:   
     @staticmethod
-    def load(emb_dir, loadXD, index_col, index_subset=None):
+    def load(emb_dir, loadXD=None, from_tsv=False, index_col="object_number", index_subset=None):
+        to_load = f"{emb_dir}/embeddings"
         if loadXD:
-            emb = pd.read_csv(f"{emb_dir}/embs_umap_{loadXD}D.csv")
-        else:
-            pbar = tqdm(sorted(glob(f"{emb_dir}/batch_*.csv")), 
-                        desc="[EmbeddingSpaceAccessor]: loading high-dimensional embedding space...")
-            emb = pd.concat([pd.read_csv(f) for f in pbar])
-
+            to_load += f"_umap_{loadXD}D"
+        to_load += ".tsv" if from_tsv else ".csv" 
+        
+        emb = pd.read_csv(to_load, sep="\t" if from_tsv else ",")
         emb = emb.set_index(index_col).sort_index()
         if index_subset is not None: emb = emb.loc[index_subset]
-        
         return emb
+
+        # # if loadXD:
+        # #     emb = pd.read_csv(f"{emb_dir}/embeddings_umap_{loadXD}D.csv")
+        # # else:
+        # #     emb = pd.read_csv(f"{emb_dir}/embeddings.csv")
+
+        #     pbar = tqdm(sorted(glob(f"{emb_dir}/batch_*.csv")), 
+        #                 desc="[EmbeddingSpaceAccessor]: loading high-dimensional embedding space...")
+        #     emb = pd.concat([pd.read_csv(f) for f in pbar])
+
+        # emb = emb.set_index(index_col).sort_index()
+        
+        # return emb
 
     
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
-        
+
+    def to_tsv(self, filename, **to_csv_args):
+        self._obj.to_csv(filename, sep="\t", **to_csv_args)
+
+    def umap(self, save_to=None, to_tsv=False, **umap_params):
+        data = self._obj.to_numpy()
+        default_params = dict(metric="cosine", n_neighbors=10, 
+                             min_dist=(data.var()**0.5/2), n_components=32)
+        default_params.update(umap_params)
+        reducer = umap.UMAP(default_params)
+        red_embs = pd.DataFrame(reducer.fit_transform(data), index=self._obj.index)
+        if save_to is not None:
+            red_embs.to_csv(save_to, index=True, sep=("\t" if to_tsv else ","))
+        return red_embs
 
 
-
-# @pd.api.extensions.register_dataframe_accessor("images")
 class ImageHandler:
-    # NEED FROM IMAGE FOLDER:
-    #  - FILE PATH
-    #  - OBJECT NUMBER (from path)
-    #  - 
-    def __init__(self, image_folder, keep_prefix=True):
+    def __init__(self, image_folder, keep_prefix=True, imploded=True):
         paths = pd.Series(glob(image_folder+"/*/*"), name="image_path").fillna("")
         if not keep_prefix: 
             paths = paths.str.replace(image_folder, "")
+
+        
         obj_nums = self.object_number_from_path(paths)
         paths.index = obj_nums
+        paths = paths.groupby(paths.index).apply(list)
         self._obj = paths
 
-
-    # @classmethod
-    # def get_DMG(cls, ):
-    
     
     @staticmethod
     def parse_filepath(s):
@@ -158,7 +176,6 @@ class CollectionAccessor:
     def get_latest_dump(directory):
         public = sorted(glob(directory+ "/*_public_*.json"))[-1]
         private = sorted(glob(directory+ "/*_private_*.json"))[-1]
-        print(public, private)
         time_stamp = re.match(".*/API_dump_public_(.+).json", public).group(1)
         return time_stamp, public.replace(".json", "_extracted.csv"), private.replace(".json", "_extracted.csv")
 
@@ -169,7 +186,7 @@ class CollectionAccessor:
         
     
     @classmethod
-    def get_DMG(cls, pub_path, priv_path, rights_path, image_handler, erase_duplicates=False, **metadata):
+    def get_DMG(cls, pub_path, priv_path, rights_path, image_handler=None, erase_duplicates=False, **metadata):
         pub = pd.read_csv(pub_path).set_index("object_number")
         priv = pd.read_csv(priv_path).set_index("object_number")
         rights = pd.read_csv(rights_path).set_index("object_number")
@@ -177,9 +194,10 @@ class CollectionAccessor:
         df = pd.concat([pub, priv.loc[priv.index.difference(pub.index)]])
         df = df.join(rights)
 
-        
-        df = df.join(image_handler._obj, how="left")
-
+        if image_handler is not None:
+            df = df.join(image_handler._obj, how="left")
+        else:
+            df["image_path"] = ""
 
         assert ("name" in metadata) and ("id_" in metadata) and ("creation_timestamp" in metadata)
         df.attrs = metadata
@@ -312,9 +330,9 @@ class CollectionAccessor:
                 for i, r in sub.iterrows()]
 
 
-    @staticmethod
-    def parse_query(query):
-        return query
+    # @staticmethod
+    # def parse_query(query):
+    #     return query
 
     
     def filter(self, text_query, return_df=True, start_time=None, end_time=None, **categorical_values):
@@ -326,7 +344,7 @@ class CollectionAccessor:
 
         # TEXTs
         
-        text_query = self.parse_query(text_query)
+        # text_query = self.parse_query(text_query)
         
         text_search_fields = ["objectname_label", "material_label", "maker_label", "coiner_label"]
         
