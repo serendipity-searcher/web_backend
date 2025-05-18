@@ -2,6 +2,8 @@
 *.json
 data/images/
 .DS_Store
+data/generated_data/
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
