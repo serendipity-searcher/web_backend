@@ -72,7 +72,7 @@ def validate_filenames(filenames):
     files = [(f,)+os.path.split(f) for f in filenames]
     files = pd.DataFrame(files, columns=["raw", "prefix", "filename"])
     # files["object_number"] = files.raw.apply(get_object_number)
-    obj_nums = ImageHandler.object_number_from_path(files.raw)
+    obj_nums = ImageHandler.object_number_from_path("./" + files.raw)
 
     files["object_number"] = obj_nums
 
@@ -104,30 +104,62 @@ def download(save_path, row, redownload=False):
         print(f"{prefix+row.raw} exists! skipping...")
 
 
+import os
+from PIL import Image
+from PIL import ImageFile
+ImageFile.LOAD_TRUNCATED_IMAGES = True
+
+
+
+def resize(save_path, row, new_path): #old_directory_name="images", new_directory_name="images_resized"):
+    def smaller(w, h):
+        fixed_size = 1200
+        r = h/w 
+        if w >= h:
+            return (fixed_size, int(fixed_size*r))
+        else:
+            r = 1/r
+            return (int(fixed_size*r), fixed_size)
+
+    with Image.open(save_path+row.raw) as img_handle:
+        new_size = smaller(*img_handle.size)
+        img_handle.thumbnail(new_size, Image.Resampling.LANCZOS)
+
+        # new_path = save_path.replace(old_directory_name, new_directory_name)
+
+        if not os.path.isdir(new_path+row.prefix):
+            os.makedirs(new_path+row.prefix)
+
+        img_handle.save(new_path+row.raw, quality=90)
+        
+
 if __name__ == "__main__":
     auto_confirm = False
     limit = None
+    save_folder = "images"
+    save_path = DATA_DIR + f"/{save_folder}/"
+    delete_original = False
     
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--save_path", help="path for saving downloaded images")
     parser.add_argument("--limit", help="only download {limit} many files", type=int)
     parser.add_argument("--confirmed", help="pre-confirm download", action="store_true")
+    parser.add_argument("--delete_original", help="delete original images after download and downscaling", action="store_true")
     args = parser.parse_args()
 
-    if not args.save_path:
-        save_path = DATA_DIR + "/images/"
-        
+    if args.save_path:
+        save_path = args.save_path
+           
     if args.limit:
         limit = args.limit
-    else:
-        limit = None
 
     if args.confirmed:
-        print("CONFIRMED")
-    else:
-        print("NOT CONFIRMED")
-    
+        auto_confirm = args.confirmed
+
+    if args.delete_original:
+        delete_original = True
+        
     filenames_raw = [file.key for file in tqdm(bucket.objects.all(), desc="enumerating file names...")][:limit]
     filenames = validate_filenames(filenames_raw)
     
@@ -139,10 +171,26 @@ if __name__ == "__main__":
     
     to_confirm = f"About to download {readable_size(sizes.sum())}, {len(filenames)} files... (y/n)?"
     
-    if not (args.confirmed or input(to_confirm).lower().startswith("y")):
+    if not auto_confirm or input(to_confirm).lower().startswith("y")):
         exit()
 
     def download_to_path(row, redownload=False):
         return download(save_path, row, redownload=redownload)
     
     filenames.progress_apply(download_to_path, axis=1)
+
+
+    resized_path = save_path.replace(save_folder, "images_resized")
+    def resize_to_path(row):
+        resize(save_path, row, new_path=resized_path)
+
+    filenames.progress_apply(resize_to_path, axis=1)
+
+
+    import shutil
+    import os
+    if delete_original:
+        # shutil.rmtree(save_path)
+        os.rename(resized_path, save_path) # this overwrites the 
+
+    

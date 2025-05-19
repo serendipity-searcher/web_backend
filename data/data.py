@@ -78,7 +78,8 @@ class ImageHandler:
 
     
     @staticmethod
-    def parse_filepath(s):
+    def parse_filepath(s):#     folder, file = s.rsplit("/", maxsplit=2)#[1:]
+
         *_, folder, file = s.rsplit("/", maxsplit=2)#[1:]
         try:
             obj_rendition, extension = file.rsplit(".", maxsplit=1)

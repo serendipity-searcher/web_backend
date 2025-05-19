@@ -11,4 +11,4 @@ cd ./src/
 
 # python dump_from_S3bucket.py --save_path "../images_mnt/DMG/" --confirmed
 
-python dump_from_S3bucket.py --confirmed
+python dump_from_S3bucket.py --confirmed #--save_path "../images/DMG/"
