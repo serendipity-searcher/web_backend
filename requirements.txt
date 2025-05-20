@@ -18,3 +18,4 @@ tqdm==4.67.1
 uvicorn==0.34.2
 dotenv==0.9.9
 python-dotenv==1.1.0
+umap-learn==0.5.7
