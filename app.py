@@ -17,9 +17,9 @@ import pandas as pd
 
 
 
-from data.data import CollectionAccessor, ImageHandler#, EmbeddingSpaceAccessor
+from data.data import CollectionAccessor, ImageHandler, EmbeddingSpaceAccessor
 
-from search import Search, Randomiser, Equaliser #GraphSearcher, EmbeddingSearcher
+from search import Search, Randomiser, Equaliser, GraphSearcher, EmbeddingSearcher, TextEmbeddingSearcher
 from moon import MOON, Moon
 
 
@@ -38,24 +38,43 @@ def init_DMG():
                                      image_handler=image_handler,
                                      **dmg_meta)
 
-    rand = Randomiser(df, name="Randomiser")
-    rand2 = Randomiser(df, name="Randomiser")
-    s = Search([rand, rand2])
-    return df, s
+    kg_searcher = GraphSearcher(df)
+
+
+    sem_embs = EmbeddingSpaceAccessor.load("data/generated_data/distiluse-base-multilingual-cased-v2",
+                                       loadXD=None)
+    concept_search = TextEmbeddingSearcher(sem_embs, name="ConceptSearcher")
+
+
+    sem_embs = EmbeddingSpaceAccessor.load("data/generated_data/distiluse-base-multilingual-cased-v2",
+                                       loadXD=13)
+    sem_searcher = EmbeddingSearcher(sem_embs, name="SemanticSearcher")
+    
+    viz_embs = EmbeddingSpaceAccessor.load("data/generated_data/vitmae", loadXD=13)
+    viz_searcher = EmbeddingSearcher(viz_embs, name="VisualSearcher")
+
+    
+    
+    # rand = Randomiser(df, name="Randomiser")
+    # rand2 = Randomiser(df, name="Randomiser")
+    s = Search([kg_searcher, sem_searcher, viz_searcher])
+    return df, s, concept_search
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     global moon
     global collections
     global searches
+    global concept_searches
 
 
     moon = Moon()
 
-    DMG, DMG_searcher = init_DMG()
+    DMG, DMG_searcher, DMG_concept_search = init_DMG()
 
     collections = {c.attrs["id_"]: DMG for c in [DMG]}
     searches = {DMG.attrs["id_"]: DMG_searcher}
+    concept_searches = {DMG.attrs["id_"]: DMG_concept_search}
 
     yield
     print("have a lunar day 🌕‬")
@@ -128,40 +147,36 @@ def object_details(collection_id, object_ids):
 
 
 @app.get("/{collection_id}/search")
-def search_collection(collection_id, object_ids=None, concept=None, model_ids=[]):
+def search_collection(collection_id, object_ids=None, concept=None, model_ids=None):
+    # if is_cached(collection_id, object_ids, concept, model_ids):
+    #     return get_cached(collection_id, object_ids, concept, model_ids)
+
     cur_coll = get_collection(collection_id)
 
     if (object_ids is None) or not object_ids or len(object_ids) < 1:
         object_ids = list(cur_coll.sample(4).index)
     else:
         object_ids = parse_id_list(object_ids)
+        
     cur_records = cur_coll.loc[object_ids]
     cur_search = searches[collection_id]
+    cur_concept_search = concept_searches[collection_id]
+    
     if (model_ids is not None):
         model_ids = parse_id_list(model_ids)
         scores = cur_search(cur_records, model_ids)
     else:
-        eq = Equaliser(cur_coll)
-        scores = eq(cur_records)
+        scores = Equaliser(cur_coll)(cur_records)
 
+    if (concept is not None):
+        concept_scores = cur_concept_search(concept)
+        scores = (scores + concept_scores)/2
 
-    # s = cur_search.turn_into_function(model_ids)
-
-    # scores = s(cur_records)
-
-
-    # if is_cached(collection_id, object_ids, concept, model_ids):
-    #     return get_cached(collection_id, object_ids, concept, model_ids)
-
-    # s = search.turn_into_function(model_ids)
-
-    # object_scores = s(object_ids)
-    # concept_scores = concept_search(concept)
-    # # IMPORTANT: mean(mean(GS, SS, VS), CS) != mean(GS, SS, VS, CS) (because population sizes differ)
-    # scores = (object_scores + concept_scores)/2
+    if (model_ids is None) and (concept is None):
+        scores = Randomiser(cur_coll)(cur_records)
+    
 
     # diversify(scores)
-
     # cache_search(object_ids, concept, model_ids, scores)
     return scores
 

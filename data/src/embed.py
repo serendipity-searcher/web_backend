@@ -145,10 +145,12 @@ if __name__ == "__main__":
             os.makedirs(f"{OUT_DIR}/{model_name}")
         text_embs = embed_texts(texts, model_name)
         text_embs.to_csv(f"{OUT_DIR}/{model_name}/embeddings.csv", index=True)
-    
-        if args.do_umap:
-            umap_embs
 
+        
+        if args.do_umap:
+            text_embs.emb_space.umap(save_to=f"{OUT_DIR}/{model_name}/embeddings_32D.csv")
+
+    
 
     if args.embed_images:
         model_name = "vitmae"
@@ -162,5 +164,5 @@ if __name__ == "__main__":
         img_embs.to_csv(f"{OUT_DIR}/{model_name}/embeddings.csv", index=True)
     
         if args.do_umap:
-            pass
+            img_embs.emb_space.umap(save_to=f"{OUT_DIR}/{model_name}/embeddings_32D.csv")
 

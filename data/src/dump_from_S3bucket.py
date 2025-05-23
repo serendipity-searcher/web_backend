@@ -191,6 +191,6 @@ if __name__ == "__main__":
     import os
     if delete_original:
         # shutil.rmtree(save_path)
-        os.rename(resized_path, save_path) # this overwrites the 
+        os.rename(resized_path, save_path) # this overwrites the original download directory (by performing a mv)
 
     

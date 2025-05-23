@@ -16,8 +16,8 @@ import imageio.v3 as iio
 # from PIL import Image
 
 
-# import torch
-# from sentence_transformers import SentenceTransformer, util
+import torch
+from sentence_transformers import SentenceTransformer, util
 
 
 from collections import Counter
@@ -47,7 +47,7 @@ class Search:
         
         if searcher_ids is not None:
             if len(searcher_ids) < 1:
-                raise ValueError("Searching with no searcher (aka model) not defined! (This logic is implemented externally.)")
+                raise ValueError("Searching with no searcher (aka model) not defined! (Implement this logic externally.)")
             else:
                 cur_searchers = [s for s in self.searchers for s_id in searcher_ids if id(s) == s_id]
         else:
@@ -201,7 +201,10 @@ class EmbeddingSearcher(Searcher):
     def euclidean_sim(p, v2):
         return 1-torch.cdist(torch.as_tensor(p), torch.tensor(v2))
 
-
+    
+    # @classmethod
+    # def from_embeddings(cls, 
+    
     
     def __init__(self, space_df, sim_func=None, norm_scores=True, name="EmbeddingSeacher"):
         super().__init__(name)
@@ -215,7 +218,7 @@ class EmbeddingSearcher(Searcher):
 
 
     def rank_vector(self, vec):
-        point = torch.as_tensor(vec)
+        point = torch.as_tensor(vec).double()
         sims = self.f(point, self.space.to_numpy()).numpy().reshape((-1,))    
         return self.unit_norm(sims) if self.do_norm else sims
     
@@ -223,7 +226,7 @@ class EmbeddingSearcher(Searcher):
     #     return self.rank_vector(vecs.mean(axis=0))
 
     def rank_multiple_vectors(self, vecs):
-        sims = self.f(vecs, self.space.values) # shape = (len(vecs), len(self.space))
+        sims = self.f(vecs, self.space.to_numpy()) # shape = (len(vecs), len(self.space))
         sims_pool = sims.mean(axis=0).numpy()
         return self.unit_norm(sims_pool) if self.do_norm else sims
 

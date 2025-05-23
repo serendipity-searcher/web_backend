@@ -1,4 +1,5 @@
 from glob import glob
+import os
 
 import numpy as np
 import pandas as pd
@@ -22,10 +23,14 @@ import umap.umap_ as umap
 class EmbeddingSpaceAccessor:   
     @staticmethod
     def load(emb_dir, loadXD=None, from_tsv=False, index_col="object_number", index_subset=None):
-        to_load = f"{emb_dir}/embeddings"
+        base_path = f"{emb_dir}/embeddings"
+        ext = ".tsv" if from_tsv else ".csv"
         if loadXD:
-            to_load += f"_umap_{loadXD}D"
-        to_load += ".tsv" if from_tsv else ".csv" 
+            to_load = base_path + f"_{loadXD}D" + ext
+            if not os.path.exists(to_load):
+                to_load = base_path + ext
+        else:
+            to_load = base_path + ext
         
         emb = pd.read_csv(to_load, sep="\t" if from_tsv else ",")
         emb = emb.set_index(index_col).sort_index()
@@ -54,10 +59,11 @@ class EmbeddingSpaceAccessor:
 
     def umap(self, save_to=None, to_tsv=False, **umap_params):
         data = self._obj.to_numpy()
+        min_dist = (data.var()**0.5/2)
         default_params = dict(metric="cosine", n_neighbors=10, 
-                             min_dist=(data.var()**0.5/2), n_components=32)
+                             min_dist=min_dist, spread=min_dist*2, n_components=32)
         default_params.update(umap_params)
-        reducer = umap.UMAP(default_params)
+        reducer = umap.UMAP(**default_params)
         red_embs = pd.DataFrame(reducer.fit_transform(data), index=self._obj.index)
         if save_to is not None:
             red_embs.to_csv(save_to, index=True, sep=("\t" if to_tsv else ","))
@@ -281,7 +287,7 @@ class CollectionAccessor:
 
 
     def get_texts(self):
-        return self._obj.apply(self._get_texts, axis=1)
+        return self._obj.fillna("").apply(self._get_texts, axis=1)
     
 
     ### ROUTE FUNCTIONS
