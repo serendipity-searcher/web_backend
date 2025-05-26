@@ -31,6 +31,10 @@ echo "BUCKET DETAILS:
 echo "see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/quickstart.html#configuration"
 ./DOWNLOAD_IMAGES.sh
 
+
+./EMBED.py
+
+
 rm -rf ./backend_venv
 
 echo "INSTALLING SEARCHER FOR DMG DONE!"

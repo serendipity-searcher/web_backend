@@ -171,7 +171,7 @@ if __name__ == "__main__":
     
     to_confirm = f"About to download {readable_size(sizes.sum())}, {len(filenames)} files... (y/n)?"
     
-    if not auto_confirm or input(to_confirm).lower().startswith("y")):
+    if not auto_confirm or input(to_confirm).lower().startswith("y"):
         exit()
 
     def download_to_path(row, redownload=False):
