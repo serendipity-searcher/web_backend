@@ -32,7 +32,7 @@ echo "see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/quicksta
 ./DOWNLOAD_IMAGES.sh
 
 
-./EMBED.py
+./EMBED.sh
 
 
 rm -rf ./backend_venv

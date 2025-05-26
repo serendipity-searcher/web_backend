@@ -55,12 +55,12 @@ class Embedder(Module):
     def __init__(self):
         super(Embedder, self).__init__()
         self.image_processor = AutoImageProcessor.from_pretrained("facebook/vit-mae-base")
-        self.image_processor = ViTImageProcessor(do_resize=False)
+        # self.image_processor = ViTImageProcessor(do_resize=False, padding=True)
         self.model = ViTMAEModel.from_pretrained("facebook/vit-mae-base")
 
     
     def forward(self, images):
-        inputs = self.image_processor(images=images, return_tensors="pt")
+        inputs = self.image_processor(images=images, return_tensors="pt")#, padding=True)
         outputs = self.model(**inputs)
         return torch.sum(outputs.last_hidden_state, dim=1).detach().numpy()
 
@@ -158,7 +158,9 @@ if __name__ == "__main__":
             os.makedirs(f"{OUT_DIR}/{model_name}")
 
         # paths = dmg.image_path.fillna([])
-        paths = dmg.image_path.apply(lambda ls: ls[0])
+        # paths = dmg.image_path.apply(lambda ls: ls[0])
+        paths = dmg.image_path.fillna(False).apply(lambda ls: (ls[0] if ls else None))
+        # paths = dmg.image_path
         
         img_embs = embed_images(OUT_DIR, paths, model_name, chunk_size=32)
         img_embs.to_csv(f"{OUT_DIR}/{model_name}/embeddings.csv", index=True)

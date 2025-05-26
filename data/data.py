@@ -73,6 +73,9 @@ class EmbeddingSpaceAccessor:
 class ImageHandler:
     def __init__(self, image_folder, keep_prefix=True, imploded=True):
         paths = pd.Series(glob(image_folder+"/*/*"), name="image_path").fillna("")
+        if paths.isna().all() or len(paths) < 1:
+            print(f"WARNING: {image_folder} is empty! Is the path correct?")
+            
         if not keep_prefix: 
             paths = paths.str.replace(image_folder, "")
 
