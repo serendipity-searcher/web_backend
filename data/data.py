@@ -407,16 +407,16 @@ class CollectionAccessor:
     #     return df[matches]
             
     
-    def order(self, scores=None):
-        if scores is None:
-            return self._obj.sort_values(by="sort_rank")
+    # def order(self, scores=None):
+    #     if scores is None:
+    #         return self._obj.sort_values(by="sort_rank")
 
-        if (scores.var()**0.5)/(scores.max()-scores.min()) < 0.01:
-            print("GIVEN SCORES HAVE TOO LITTLE VARIANCE, FALLING BACK TO DEFAULT ORDERING (BY TIME)")
-            return self._obj.sort_values(by="sort_rank")
+    #     if (scores.var()**0.5)/(scores.max()-scores.min()) < 0.001:
+    #         print("GIVEN SCORES HAVE TOO LITTLE VARIANCE, FALLING BACK TO DEFAULT ORDERING (BY TIME)")
+    #         return self._obj.sort_values(by="sort_rank")
 
-        sorted_index = scores.sort_values().index
-        return self._obj.loc[sorted_index]
+    #     sorted_index = scores.sort_values().index
+    #     return self._obj.loc[sorted_index]
     
         
     def info(self):

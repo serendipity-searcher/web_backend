@@ -161,18 +161,23 @@ def search_collection(collection_id, object_ids=None, concept=None, model_ids=No
     cur_records = cur_coll.loc[object_ids]
     cur_search = searches[collection_id]
     cur_concept_search = concept_searches[collection_id]
-    
-    if (model_ids is not None):
+
+    used_models = False
+    if (model_ids is not None) and (len(model_ids) > 0):
         model_ids = parse_id_list(model_ids)
         scores = cur_search(cur_records, model_ids)
+        used_models = True
     else:
         scores = Equaliser(cur_coll)(cur_records)
 
-    if (concept is not None):
+    used_concept = False
+    if (concept is not None) and (len(concept) > 0):
         concept_scores = cur_concept_search(concept)
+        concept_scores = concept_scores/concept_scores.sum()
         scores = (scores + concept_scores)/2
+        used_concept = True
 
-    if (model_ids is None) and (concept is None):
+    if not used_models and not used_concept:
         scores = Randomiser(cur_coll)(cur_records)
     
 

@@ -108,7 +108,9 @@ if __name__ == "__main__":
     
     full = full[~full.title.fillna("").str.lower().str.startswith("dossier")]
     full = full[full.object_URI.str.startswith("https://stad.gent/id/mensgemaaktobject/dmg/530")]
-    full = full[~(full.object_number.str.endswith(r"_ORANJE") | full.object_number.str.endswith(r"_ROOD"))]
+    full = full[~(full.object_number.str.endswith(r"_ORANJE") | 
+                full.object_number.str.endswith(r"_ROOD") |
+                full.object_number.str.endswith(r"_ARCHIEF"))]
 
 
     # PARSEABLE EDTF DATES

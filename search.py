@@ -26,10 +26,12 @@ import networkx as nx
 
 
 class Search:
-    def __init__(self, searchers):
+    def __init__(self, searchers, is_cached=False):
         self.searchers = searchers
+        self.is_cached = is_cached
         self.cur_recs = None
         self.cur_scores = None
+        
 
     def cache_search(self, recs, searcher_ids, scores):
         self.cur_recs = recs
@@ -37,7 +39,9 @@ class Search:
         self.cur_scores = scores
 
     def get_cached_search(self, recs, searcher_ids):
+        if not self.is_cached: return None
         if recs.equals(self.cur_recs) and (searcher_ids == self.cur_searcher_ids):
+            # print(f"returning cached with {recs.index} and {searcher_ids}", flush=True)
             return self.cur_scores
         return None
     
@@ -49,11 +53,11 @@ class Search:
             if len(searcher_ids) < 1:
                 raise ValueError("Searching with no searcher (aka model) not defined! (Implement this logic externally.)")
             else:
-                cur_searchers = [s for s in self.searchers for s_id in searcher_ids if id(s) == s_id]
+                cur_searchers = [s for s in self.searchers for s_id in searcher_ids if s.id == s_id]
         else:
             cur_searchers = self.searchers
             
-        searcher_scores = [s(recs) for s in self.searchers]
+        searcher_scores = [s(recs) for s in cur_searchers]# self.searchers]
         searcher_scores = pd.DataFrame({s.name: s for s in searcher_scores})
         searcher_scores.loc[recs.index] = 0.
         
@@ -68,6 +72,7 @@ class Search:
 
     
     def merge_scores(self, scores):
+        scores = scores/scores.sum(0) # unit norm, so that all searchers have same mass 
         return scores.mean(axis=1)
 
 
@@ -81,15 +86,28 @@ class Search:
         # return rand.choice(coll.index, p=tempered_scores, size=size)
 
 
-    def order(self, coll, scores=None, reverse=False):
-        assert (self.cur_scores is not None) or (scores is not None)
-        if scores is None: 
-            scores = self.cur_scores
+    # def order(self, coll, scores=None, reverse=False):
+    #     assert (self.cur_scores is not None) or (scores is not None)
+    #     if scores is None: 
+    #         scores = self.cur_scores
 
-        sort_idx = scores.argsort()
+    #     sort_idx = scores.argsort()
+    #     if reverse:
+    #         return coll.iloc[sort_idx].iloc[::-1]
+    #     return coll.iloc[sort_idx]
+
+    def order(self, coll, scores=None, reverse=False):
+        if scores is None:
+            return coll.sort_values(by="sort_rank")
+
+        if (scores.var()**0.5)/(scores.max()-scores.min()) < 0.001:
+            print("GIVEN SCORES HAVE TOO LITTLE VARIANCE, FALLING BACK TO DEFAULT ORDERING (BY TIME)")
+            return coll.sort_values(by="sort_rank")
+
+        sorted_index = scores.sort_values().index[::-1] # ORDER HAS HIGHEST SCORE AT TOP; IT'S INVERSE OF SORT
         if reverse:
-            return coll.iloc[sort_idx].iloc[::-1]
-        return coll.iloc[sort_idx]
+            sorted_index = sorted_index[::-1]
+        return coll.loc[sorted_index]
 
     
 class Searcher:
