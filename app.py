@@ -32,14 +32,25 @@ def init_MKG():
     time_stamp = "2025-06-05"
     mkg_meta = dict(name="Museum Kunst & Gewerbe", id_="MKG_"+time_stamp,
                     creation_timestamp=time_stamp, language="de")
-    mkg = CollectionAccessor.get_MKG(metadata_path=MKG_DIR+"/dumps/extraction_v0_1.csv",
+    df = CollectionAccessor.get_MKG(metadata_path=MKG_DIR+"/dumps/extraction_v0_1.csv",
                                     image_handler=image_handler,
                                     **mkg_meta)
-    kg_searcher = GraphSearcher(mkg)
+    kg_searcher = GraphSearcher(df)
     
-    s = Search([kg_searcher])#, sem_searcher, viz_searcher])
+    sem_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
+                                       loadXD=None)
+    concept_search = TextEmbeddingSearcher(sem_embs, name="ConceptSearcher")
 
-    return mkg, s, None
+
+    sem_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
+                                       loadXD=32)
+    sem_searcher = EmbeddingSearcher(sem_embs, name="SemanticSearcher")
+    
+    viz_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/vitmae", loadXD=32)
+    viz_searcher = EmbeddingSearcher(viz_embs, name="VisualSearcher")
+
+    s = Search([kg_searcher, sem_searcher, viz_searcher])
+    return df, s, concept_search
 
 
 
@@ -68,18 +79,15 @@ def init_DMG():
 
 
     sem_embs = EmbeddingSpaceAccessor.load(DMG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
-                                       loadXD=13)
+                                       loadXD=32)
     sem_searcher = EmbeddingSearcher(sem_embs, name="SemanticSearcher")
     
-    viz_embs = EmbeddingSpaceAccessor.load(DMG_DIR+"/generated_data/vitmae", loadXD=13)
+    viz_embs = EmbeddingSpaceAccessor.load(DMG_DIR+"/generated_data/vitmae", loadXD=32)
     viz_searcher = EmbeddingSearcher(viz_embs, name="VisualSearcher")
 
-    
-    
-    # rand = Randomiser(df, name="Randomiser")
-    # rand2 = Randomiser(df, name="Randomiser")
     s = Search([kg_searcher, sem_searcher, viz_searcher])
     return df, s, concept_search
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):

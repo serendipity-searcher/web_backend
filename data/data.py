@@ -181,9 +181,6 @@ class StaticTextTranslator:
 
 @pd.api.extensions.register_dataframe_accessor("coll")
 class CollectionAccessor:
-            
-
-    
     primary_id = "object_number"
 
     text_cols = ["title", "description", "objectname_label", "material_label"]
@@ -274,6 +271,7 @@ class CollectionAccessor:
         assert ("name" in metadata) and ("id_" in metadata) and ("creation_timestamp" in metadata) and ("language" in metadata)
         df.attrs = metadata
         df.attrs.update(dict(lang=StaticTextTranslator(metadata["language"])))
+        df.attrs.update(dict(reverse_names=True))
 
         ### PARSING
         df = df.apply(cls.parse_lists)
@@ -327,6 +325,7 @@ class CollectionAccessor:
         assert ("name" in metadata) and ("id_" in metadata) and ("creation_timestamp" in metadata) and ("language" in metadata)
         df.attrs = metadata
         df.attrs.update(dict(lang=StaticTextTranslator(metadata["language"])))
+        df.attrs.update(dict(reverse_names=False))
 
 
         ### PARSING
@@ -417,13 +416,15 @@ class CollectionAccessor:
                 return "CC0"
             else: return "In Copyright" 
 
-        
+
+        reverse_names = CollectionAccessor.reverse_names if self._obj.attrs["reverse_names"]\
+                            else (lambda x: x)
         
         return [{"inventory_number": r.name, 
                  "title": r.title, 
                  "description": r.description,
-                 "designer": all_or_onbekend(r.coiner_label, map_f=CollectionAccessor.reverse_names),
-                "producer": all_or_onbekend(r.maker_label, map_f=CollectionAccessor.reverse_names),
+                 "designer": all_or_onbekend(r.coiner_label, map_f=reverse_names),
+                "producer": all_or_onbekend(r.maker_label, map_f=reverse_names),
                  "design_date": CollectionAccessor.human_readable_dates(r.coin_time, 
                                                                         before=lang.before, after=lang.after),
                  "production_date": CollectionAccessor.human_readable_dates(r.creation_time, 
@@ -546,9 +547,9 @@ class CollectionAccessor:
             return " & ".join([cls.reverse_names(x) for x in s.split("&")])
         s = s.strip()
         if not s: return ""
-        if not "," in s:
+        if not ", " in s:
             return s
-        b, a = s.split(", ")
+        b, a = s.split(", ", maxsplit=1)
         return f"{a} {b}"
     
     
