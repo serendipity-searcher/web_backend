@@ -1,9 +1,9 @@
 # USER ADDED
 *.json
-data/images/
+**/images/
 .DS_Store
-data/generated_data/
-
+**/generated_data/
+**/dumps/*
 
 # Byte-compiled / optimized / DLL files
 __pycache__/

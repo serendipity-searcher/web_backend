@@ -71,6 +71,42 @@ class EmbeddingSpaceAccessor:
 
 
 class ImageHandler:
+    def __new__(cls, collection_name, image_folder, keep_prefix=True, imploded=False):
+        if collection_name == "DMG":
+            self = DMGImageHandler(image_folder, keep_prefix=keep_prefix, imploded=True)
+        elif collection_name == "MKG":
+            self = MKGImageHandler(image_folder, keep_prefix=keep_prefix, imploded=False)
+        else:
+            ValueError(f"ImageHandler doesn't know a collection called {collection_name}!")
+
+        return self
+        
+    # def __init__(se
+
+class MKGImageHandler:
+    def __init__(self, image_folder, keep_prefix=True, imploded=False):
+        paths = pd.Series(glob(image_folder+"/*"), name="image_path").fillna("")
+        if paths.isna().all() or len(paths) < 1:
+            print(f"WARNING: {image_folder} is empty! Is the path correct?")
+        
+        if not keep_prefix: 
+            paths = paths.str.replace(image_folder+"/", "")
+
+        obj_nums = self.object_number_from_path(paths)
+        paths.index = obj_nums
+        if imploded:
+            paths = paths.groupby(paths.index).apply(list)
+        self._obj = paths
+
+    @classmethod
+    def object_number_from_path(cls, path_series):
+        obj_nums = path_series.apply(lambda f: os.path.splitext(os.path.basename(f))[0])
+        obj_nums.name = "object_number"
+        return obj_nums
+
+
+
+class DMGImageHandler:
     def __init__(self, image_folder, keep_prefix=True, imploded=True):
         paths = pd.Series(glob(image_folder+"/*/*"), name="image_path").fillna("")
         if paths.isna().all() or len(paths) < 1:
@@ -82,7 +118,8 @@ class ImageHandler:
         
         obj_nums = self.object_number_from_path(paths)
         paths.index = obj_nums
-        paths = paths.groupby(paths.index).apply(list)
+        if imploded:
+            paths = paths.groupby(paths.index).apply(list)
         self._obj = paths
 
     
@@ -99,7 +136,7 @@ class ImageHandler:
         try:
             obj_num, rendition_ind =  obj_rendition.rsplit("$", maxsplit=1)
         except ValueError:
-            obj_num = obj_rendition
+            obj_num = obj_renditionz
             rendition_ind = None
         # rendition_id = ((rendition_ind[0] if rendition_ind[0] else None) if rendition_ind else None)
         return dict(path=folder, object_number=obj_num, 
@@ -114,18 +151,39 @@ class ImageHandler:
         return obj_nums
 
     
-    def align_with_other(self, other, how="right"):
-        pass
+    # def align_with_other(self, other, how="right"):
+    #     pass
 
     
     def merge_with_other(self, other, how="right"):
         return self._obj.join(other, how=how)
         
 
+class StaticTextTranslator:
+    en = ["and_", "collection_of", "made_of", "unknown", "before", "after"]
+    
+    nl = ["en", "verzameling van", "gemaakt van", "onbekend", "voor", "na"]
+
+    de = ["und", "Sammlung von", "gemacht aus", "unbekannt", "vor", "nach"]
+          
+    def __init__(self, language_code):
+        implemented = "en", "nl", "de"
+        assert language_code in implemented
+
+        # keys = [k.replace(" ", "_") for k in StaticTextTranslator.en]
+        en_vals = [k.replace("_", " ").strip() for k in StaticTextTranslator.en]
+        vals = (en_vals if (language_code == "en") else \
+            (StaticTextTranslator.nl if (language_code == "nl") else StaticTextTranslator.de))
+
+        self.__dict__.update(dict(zip(self.en, vals)))
+          
 
 
 @pd.api.extensions.register_dataframe_accessor("coll")
-class CollectionAccessor: 
+class CollectionAccessor:
+            
+
+    
     primary_id = "object_number"
 
     text_cols = ["title", "description", "objectname_label", "material_label"]
@@ -145,11 +203,12 @@ class CollectionAccessor:
     categorical_cols = dict(objectname_URI='objectname_label',
                            subcollection_URI='subcollection_name',
                            material_URI="material_label",
-                           part_label="part_label",
-                           part_material_URI="part_material_label",
+                           technique_URI="technique_label",
+                           # part_label="part_label",
+                           # part_material_URI="part_material_label",
+                           
                            creation_place_URI="creation_place_label",
                            maker_URI="maker_label",
-                           technique_URI="technique_label",
                            coin_place_URI="coin_place_label",
                            coiner_URI="coiner_label"
                           )
@@ -196,27 +255,34 @@ class CollectionAccessor:
         
     
     @classmethod
-    def get_DMG(cls, pub_path, priv_path, rights_path, image_handler=None, erase_duplicates=False, **metadata):
-        pub = pd.read_csv(pub_path).set_index("object_number")
-        priv = pd.read_csv(priv_path).set_index("object_number")
-        rights = pd.read_csv(rights_path).set_index("object_number")
+    def get_DMG(cls, pub_path, priv_path=None, rights_path=None, 
+                image_handler=None, erase_duplicates=False, **metadata):
+        df = pd.read_csv(pub_path).set_index("object_number")
+        if priv_path:
+            priv = pd.read_csv(priv_path).set_index("object_number")
+            df = pd.concat([df, priv.loc[priv.index.difference(df.index)]])
 
-        df = pd.concat([pub, priv.loc[priv.index.difference(pub.index)]])
-        df = df.join(rights)
+        if rights_path:
+            rights = pd.read_csv(rights_path).set_index("object_number")
+            df = df.join(rights)
 
         if image_handler is not None:
             df = df.join(image_handler._obj, how="left")
         else:
             df["image_path"] = ""
 
-        assert ("name" in metadata) and ("id_" in metadata) and ("creation_timestamp" in metadata)
+        assert ("name" in metadata) and ("id_" in metadata) and ("creation_timestamp" in metadata) and ("language" in metadata)
         df.attrs = metadata
+        df.attrs.update(dict(lang=StaticTextTranslator(metadata["language"])))
 
         ### PARSING
         df = df.apply(cls.parse_lists)
 
 
         ### TIME STUFF
+
+        ### REMOVE: PART OF EXTRACTION
+
         df[cls.time_cols] = df[cls.time_cols].replace({"/": None, "..": None})#.fillna(None)
         ### REMOVE: PART OF EXTRACTION
                 
@@ -229,7 +295,9 @@ class CollectionAccessor:
         today_interval = "/"+dt.datetime.today().strftime("%Y-%m-%d")
         # df[cls.time_cols] = df[cls.time_cols].fillna(today_interval)
         df[filled_time_col] = df[filled_time_col].fillna(today_interval)
-                
+
+        ### REMOVE: PART OF EXTRACTION
+
                 
         # df[cls.time_cols] = df[cls.time_cols].apply(cls.parse_edtf_memoised)
         df[filled_time_col] = cls.parse_edtf_memoised(df[filled_time_col])
@@ -242,6 +310,29 @@ class CollectionAccessor:
         
         
         sorted_df = df.sort_index().sort_values(by=filled_time_col, kind="stable")
+        sorted_df["sort_rank"] = pd.RangeIndex(1, len(sorted_df)+1)
+
+        return sorted_df
+
+    
+    @classmethod
+    def get_MKG(cls, metadata_path, image_handler=None, erase_duplicates=False, **metadata):
+        df = pd.read_csv(metadata_path).set_index("object_number")
+
+        if image_handler is not None:
+            df = df.join(image_handler._obj, how="left")
+        else:
+            df["image_path"] = ""
+
+        assert ("name" in metadata) and ("id_" in metadata) and ("creation_timestamp" in metadata) and ("language" in metadata)
+        df.attrs = metadata
+        df.attrs.update(dict(lang=StaticTextTranslator(metadata["language"])))
+
+
+        ### PARSING
+        df = df.apply(cls.parse_lists)
+        df.time = cls.parse_edtf_memoised(df.time)
+        sorted_df = df.sort_index().sort_values(by="time", kind="stable")
         sorted_df["sort_rank"] = pd.RangeIndex(1, len(sorted_df)+1)
 
         return sorted_df
@@ -268,6 +359,7 @@ class CollectionAccessor:
         
     
     def _get_texts(self, r):
+        lang = self._obj.attrs["lang"]
         title = r.title if r.title else ""
         description = r.description if r.description else ""
     
@@ -276,14 +368,14 @@ class CollectionAccessor:
             mat_names = r.material_label
     
             if isinstance(obj_names, list):
-                t = f"verzameling van {', '.join(obj_names[:-1])} en {obj_names[-1]}"
+                t = f"{lang.collection_of} {', '.join(obj_names[:-1])} {lang.and_} {obj_names[-1]}"
             else:
                 t = f"{obj_names}"
     
             if isinstance(mat_names, list):
-                t += f" gemaakt van {', '.join(mat_names[:-1])} en {mat_names[-1]}"
+                t += f" {lang.made_of} {', '.join(mat_names[:-1])} {lang.and_} {mat_names[-1]}"
             elif mat_names:
-                t += f" gemaakt van {mat_names}"
+                t += f" {lang.made_of} {mat_names}"
             return t
         else:
             return f"{title}\n{description}".strip()
@@ -295,11 +387,13 @@ class CollectionAccessor:
 
     ### ROUTE FUNCTIONS
 
-    def get_presentation_records(self, object_numbers=None, as_json=True):    
+    def get_presentation_records(self, object_numbers=None, as_json=True):   
+        lang = self._obj.attrs["lang"]
+
         sub = self._obj[self.presentation_cols + ["image_path"]].fillna("")
         if object_numbers is not None: sub = sub.loc[object_numbers]
         
-        cutoffs = {"title": 50, "description": 300}
+        cutoffs = {"title": 100, "description": 500}
         for c, i in cutoffs.items():
             sub[c] = sub[c].apply(
                 lambda s: ((s[:i] + " …") if len(s) > i else s)
@@ -309,16 +403,16 @@ class CollectionAccessor:
         if not as_json: return sub 
 
 
-        def all_or_onbekend(val, onbekend, map_f=lambda x: x):
+        def all_or_onbekend(val, map_f=lambda x: x):
             if not val:
-                return onbekend
+                return lang.unknown
             elif isinstance(val, str): 
                 return map_f(val)
             else: return "; ".join(map(map_f, val))
 
         def display_attribution(r):
             if r.rights == "rights cleared":
-                return r.attribution.replace("UNKNOWN", "onbekend") # never NaN or of type list
+                return r.fillna("UNKNOWN").attribution.replace("UNKNOWN", lang.unknown) # never NaN or of type list
             elif r.rights == "public domain":
                 return "CC0"
             else: return "In Copyright" 
@@ -328,12 +422,14 @@ class CollectionAccessor:
         return [{"inventory_number": r.name, 
                  "title": r.title, 
                  "description": r.description,
-                 "designer": all_or_onbekend(r.coiner_label, "onbekend", map_f=CollectionAccessor.reverse_names),
-                "producer": all_or_onbekend(r.maker_label, "onbekend", map_f=CollectionAccessor.reverse_names),
-                 "design_date": CollectionAccessor.human_readable_dates(r.coin_time),
-                 "production_date": CollectionAccessor.human_readable_dates(r.creation_time),
-                 "design_place": all_or_onbekend(r.coin_place_label, ""),
-                 "production_place": all_or_onbekend(r.creation_place_label, ""),
+                 "designer": all_or_onbekend(r.coiner_label, map_f=CollectionAccessor.reverse_names),
+                "producer": all_or_onbekend(r.maker_label, map_f=CollectionAccessor.reverse_names),
+                 "design_date": CollectionAccessor.human_readable_dates(r.coin_time, 
+                                                                        before=lang.before, after=lang.after),
+                 "production_date": CollectionAccessor.human_readable_dates(r.creation_time, 
+                                                                            before=lang.before, after=lang.after),
+                 "design_place": all_or_onbekend(r.coin_place_label),
+                 "production_place": all_or_onbekend(r.creation_place_label),
                  "rights_attribution": display_attribution(r),
                  "image_path": r.image_path
                 }
@@ -361,7 +457,7 @@ class CollectionAccessor:
         text_matches = []
         for c in text_search_fields:
             cur_col = self._obj[c].apply(lambda ls: " ".join(ls)) if c in self.list_cols else self._obj[c]
-            text_matches.append(cur_col.str.contains(text_query, regex=True))
+            text_matches.append(cur_col.fillna("").str.contains(text_query, regex=True))
 
         text_matches.append(self._obj.index.str.contains(text_query, regex=True))
         text_matches.append(self.get_texts().str.contains(text_query, regex=True))
@@ -457,24 +553,27 @@ class CollectionAccessor:
     
     
     @staticmethod
-    def human_readable_dates(s):
+    def human_readable_dates(s, before, after, ca="ca."):
         if not s:
             return ""
-    
-    
-        a, b = s.split("/")
-    
+            
         def parse_year(y):
             if y.endswith("~"):
-                return "ca. " + y[:-1]
+                return f"{ca} " + y[:-1]
             else: return y
+        
+        if not "/" in s:
+            return parse_year(s)
+
+        
+        a, b = s.split("/")
     
         if (not a) and (not b):
             return ""
         elif not b:
-            return "na " + parse_year(a)
+            return f"{after} " + parse_year(a)
         elif not a:
-            return "voor " + parse_year(b)
+            return f"{before} " + parse_year(b)
         else:
             return parse_year(a) + " — " + parse_year(b)
     

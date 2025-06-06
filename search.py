@@ -151,11 +151,11 @@ class GraphSearcher(Searcher):
             else: pass
     
     def _build(self, collection):
-        pbar = tqdm(collection[collection.coll.categorical_cols.values()].iterrows(), 
+        pbar = tqdm(collection[collection.coll.categorical_cols.values()].fillna("").iterrows(), 
                     total=len(collection), desc='[GraphSearcher]: building graph...')
         cat_obj_links = [(r.name, v) for i, r in pbar for v in GraphSearcher.iter_values(r)]
         
-        pbar = tqdm(collection[collection.coll.categorical_cols.values()].iterrows(), 
+        pbar = tqdm(collection[collection.coll.categorical_cols.values()].fillna("").iterrows(), 
                     total=len(collection), desc='[GraphSearcher]: building graph...')
         cat_cat_links = [tuple(sorted((v1, v2)))for i, r in pbar 
                          for v1 in GraphSearcher.iter_values(r) for v2 in GraphSearcher.iter_values(r) 

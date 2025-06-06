@@ -1,12 +1,15 @@
+beautifulsoup4
 boto3==1.36.9
 edtf==5.0.0
 fastapi==0.115.12
 imageio==2.35.1
+lxml
 matplotlib==3.10.3
 networkx==3.3
 numpy<=2.5.1
 pandas==2.2.3
 pathvalidate==3.2.3
+oxrdflib
 rdflib==7.1.4
 Requests==2.32.3
 scipy==1.15.3

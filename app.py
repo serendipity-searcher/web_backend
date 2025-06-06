@@ -22,35 +22,56 @@ from data.data import CollectionAccessor, ImageHandler, EmbeddingSpaceAccessor
 from search import Search, Randomiser, Equaliser, GraphSearcher, EmbeddingSearcher, TextEmbeddingSearcher
 from moon import MOON, Moon
 
+def init_MKG():
+    MKG_DIR = "./data/MKG"
+    image_folder = MKG_DIR+"/images"
+    image_handler = ImageHandler("MKG", image_folder=image_folder, keep_prefix=False)
+
+    # time_stamp, pub_file, priv_file = CollectionAccessor.get_latest_dump("./data/dumps")
+
+    time_stamp = "2025-06-05"
+    mkg_meta = dict(name="Museum Kunst & Gewerbe", id_="MKG_"+time_stamp,
+                    creation_timestamp=time_stamp, language="de")
+    mkg = CollectionAccessor.get_MKG(metadata_path=MKG_DIR+"/dumps/extraction_v0_1.csv",
+                                    image_handler=image_handler,
+                                    **mkg_meta)
+    kg_searcher = GraphSearcher(mkg)
+    
+    s = Search([kg_searcher])#, sem_searcher, viz_searcher])
+
+    return mkg, s, None
+
+
 
 def init_DMG():
-    image_folder = "./data/images/DMG"
-    image_handler = ImageHandler(image_folder=image_folder, keep_prefix=False)
+    DMG_DIR = "./data/DMG"
+    image_folder = DMG_DIR+"/images"
+    image_handler = ImageHandler("DMG", image_folder=image_folder, keep_prefix=False)
 
-    time_stamp, pub_file, priv_file = CollectionAccessor.get_latest_dump("./data/dumps")
+    time_stamp, pub_file, priv_file = CollectionAccessor.get_latest_dump(DMG_DIR+"/dumps")
 
 
     dmg_meta = dict(name="Design Museum Gent (public & private)", id_="DMG_"+time_stamp,
-                creation_timestamp=time_stamp)
+                creation_timestamp=time_stamp, language="nl")
     df = CollectionAccessor.get_DMG(pub_path=pub_file, #get_latest("./data/dumps", contains="public"),
                                      priv_path=priv_file, #get_latest("./data/dumps", contains="private"),
-                                     rights_path="./data/rights.csv",
+                                     rights_path=DMG_DIR+"/rights.csv",
                                      image_handler=image_handler,
                                      **dmg_meta)
 
     kg_searcher = GraphSearcher(df)
 
 
-    sem_embs = EmbeddingSpaceAccessor.load("data/generated_data/distiluse-base-multilingual-cased-v2",
+    sem_embs = EmbeddingSpaceAccessor.load(DMG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
                                        loadXD=None)
     concept_search = TextEmbeddingSearcher(sem_embs, name="ConceptSearcher")
 
 
-    sem_embs = EmbeddingSpaceAccessor.load("data/generated_data/distiluse-base-multilingual-cased-v2",
+    sem_embs = EmbeddingSpaceAccessor.load(DMG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
                                        loadXD=13)
     sem_searcher = EmbeddingSearcher(sem_embs, name="SemanticSearcher")
     
-    viz_embs = EmbeddingSpaceAccessor.load("data/generated_data/vitmae", loadXD=13)
+    viz_embs = EmbeddingSpaceAccessor.load(DMG_DIR+"/generated_data/vitmae", loadXD=13)
     viz_searcher = EmbeddingSearcher(viz_embs, name="VisualSearcher")
 
     
@@ -71,10 +92,16 @@ async def lifespan(app: FastAPI):
     moon = Moon()
 
     DMG, DMG_searcher, DMG_concept_search = init_DMG()
+    MKG, MKG_searcher, MKG_concept_search = init_MKG()
 
-    collections = {c.attrs["id_"]: DMG for c in [DMG]}
-    searches = {DMG.attrs["id_"]: DMG_searcher}
-    concept_searches = {DMG.attrs["id_"]: DMG_concept_search}
+
+    collections = [DMG, MKG]
+    searches = [DMG_searcher, MKG_searcher]
+    concept_searches = [DMG_concept_search, MKG_concept_search]
+
+    searches = {c.attrs["id_"]: s for c, s in zip(collections, searches)}
+    concept_searches = {c.attrs["id_"]: cs for c, cs in zip(collections, concept_searches)}
+    collections = {c.attrs["id_"]: c for c in collections}
 
     yield
     print("have a lunar day 🌕‬")
@@ -83,7 +110,8 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-app.mount("/images", StaticFiles(directory="data/images"), name="static")
+app.mount("/DMG/images", StaticFiles(directory="data/DMG/images"), name="static_DMG")
+app.mount("/MKG/images", StaticFiles(directory="data/MKG/images"), name="static_DMG")
 
 app.add_middleware(
     CORSMiddleware,
