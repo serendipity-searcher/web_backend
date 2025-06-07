@@ -136,7 +136,7 @@ class DMGImageHandler:
         try:
             obj_num, rendition_ind =  obj_rendition.rsplit("$", maxsplit=1)
         except ValueError:
-            obj_num = obj_renditionz
+            obj_num = obj_rendition
             rendition_ind = None
         # rendition_id = ((rendition_ind[0] if rendition_ind[0] else None) if rendition_ind else None)
         return dict(path=folder, object_number=obj_num, 
