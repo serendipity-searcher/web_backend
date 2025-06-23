@@ -219,6 +219,8 @@ def search_collection(collection_id, object_ids=None, concept=None, model_ids=No
 
     # diversify(scores)
     # cache_search(object_ids, concept, model_ids, scores)
+
+    scores = scores.loc[cur_coll.index.intersection(scores.index)]
     return scores
 
 @app.get("/{collection_id}/search/sample")

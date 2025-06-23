@@ -79,7 +79,9 @@ class Search:
     def sample(self, coll, scores=None, temp=1.0, size=1):
         assert (self.cur_scores is not None) or (scores is not None)
         if scores is None: 
-            scores = self.cur_scores 
+            scores = self.cur_scores
+
+        scores = scores.loc[coll.index.intersection(scores.index)]
         tempered_scores = np.exp((scores/temp))
         tempered_scores = tempered_scores/tempered_scores.sum()
         return coll.sample(n=size, weights=tempered_scores)
@@ -104,7 +106,7 @@ class Search:
             print("GIVEN SCORES HAVE TOO LITTLE VARIANCE, FALLING BACK TO DEFAULT ORDERING (BY TIME)")
             return coll.sort_values(by="sort_rank")
 
-        sorted_index = scores.sort_values().index[::-1] # ORDER HAS HIGHEST SCORE AT TOP; IT'S INVERSE OF SORT
+        sorted_index = scores.sort_values().index[::-1] # ORDER HAS HIGHEST SCORE AT TOP; IT'S THE INVERSE OF SORT
         if reverse:
             sorted_index = sorted_index[::-1]
         return coll.loc[sorted_index]

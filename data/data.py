@@ -457,8 +457,8 @@ class CollectionAccessor:
         
         text_matches = []
         for c in text_search_fields:
-            cur_col = self._obj[c].apply(lambda ls: " ".join(ls)) if c in self.list_cols else self._obj[c]
-            text_matches.append(cur_col.fillna("").str.contains(text_query, regex=True))
+            cur_col = self._obj[c].fillna("").apply(lambda ls: " ".join(ls) if isinstance(ls, list) else str(ls))# if c in self.list_cols else self._obj[c]
+            text_matches.append(cur_col.str.contains(text_query, regex=True))
 
         text_matches.append(self._obj.index.str.contains(text_query, regex=True))
         text_matches.append(self.get_texts().str.contains(text_query, regex=True))
