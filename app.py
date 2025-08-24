@@ -256,6 +256,31 @@ def order_collection(collection_id, object_ids=None, concept=None, model_ids=Non
     return ordered.coll.get_presentation_records(as_json=True) if presentation else ordered
 
 
+@app.get("/{collection_id}/search/order/indexof")
+def order_index(collection_id, object_ids_index_of, object_ids=None, concept=None, model_ids=None,
+                     skip=None, limit=None, reverse=False):
+    
+    ordered = order_collection(collection_id, object_ids=object_ids, concept=concept, model_ids=model_ids,
+                     skip=skip, limit=limit, reverse=reverse, presentation=False)
+
+    
+
+    object_ids_index_of = parse_id_list(object_ids_index_of)
+    print(object_ids_index_of)
+    
+    cur_indices = {}
+    for i in object_ids_index_of:
+        bools = (ordered.index == i)
+        if bools.sum() < 1:
+            raise ValueError(f"object number {i} is not in the index!")
+        if bools.sum() > 1:
+            raise ValueError("DUPLICATES!?!?! (this should not happen)")
+
+        cur_indices[i] = int(bools.nonzero()[0][0])
+    
+    return cur_indices
+
+
 @app.get("/{collection_id}/search/order/filter")
 def filter_collection(collection_id, object_ids=None, concept=None, model_ids=None,
                       filter_text=None, skip=None, limit=None, reverse=False):
