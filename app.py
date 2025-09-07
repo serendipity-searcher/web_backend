@@ -181,18 +181,24 @@ def object_details(collection_id, object_ids):
     return sub.coll.get_presentation_records(as_json=True)
 
 
+@app.get("/{collection_id}/random")
+def random_objects(collection_id, num_objects=1):
+    return cur_coll.sample(num_objects).coll.get_presentation_records(as_json=True)
+
+
 
 @app.get("/{collection_id}/search")
-def search_collection(collection_id, object_ids=None, concept=None, model_ids=None):
+def search_collection(collection_id, object_ids, concept=None, model_ids=None):
     # if is_cached(collection_id, object_ids, concept, model_ids):
     #     return get_cached(collection_id, object_ids, concept, model_ids)
 
     cur_coll = get_collection(collection_id)
 
     if (object_ids is None) or not object_ids or len(object_ids) < 1:
-        object_ids = list(cur_coll.sample(4).index)
-    else:
-        object_ids = parse_id_list(object_ids)
+        raise ValueError(f"object_ids is required! (at least one ) but was {object_ids}")
+
+    
+    object_ids = parse_id_list(object_ids)
         
     cur_records = cur_coll.loc[object_ids]
     cur_search = searches[collection_id]
@@ -224,7 +230,7 @@ def search_collection(collection_id, object_ids=None, concept=None, model_ids=No
     return scores
 
 @app.get("/{collection_id}/search/sample")
-def sample_collection(collection_id, object_ids=None, concept=None, model_ids=None,
+def sample_collection(collection_id, object_ids, concept=None, model_ids=None,
                       k=12, ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"):
     cur_coll = get_collection(collection_id)
     cur_search = searches[collection_id]
@@ -239,7 +245,7 @@ def sample_collection(collection_id, object_ids=None, concept=None, model_ids=No
 
 
 @app.get("/{collection_id}/search/order")
-def order_collection(collection_id, object_ids=None, concept=None, model_ids=None,
+def order_collection(collection_id, object_ids, concept=None, model_ids=None,
                      skip=None, limit=None, reverse=False, presentation=True):
     cur_coll = get_collection(collection_id)
     cur_search = searches[collection_id]
@@ -257,7 +263,7 @@ def order_collection(collection_id, object_ids=None, concept=None, model_ids=Non
 
 
 @app.get("/{collection_id}/search/order/indexof")
-def order_index(collection_id, object_ids_index_of, object_ids=None, concept=None, model_ids=None,
+def order_index(collection_id, object_ids_index_of, object_ids, concept=None, model_ids=None,
                      skip=None, limit=None, reverse=False):
     
     ordered = order_collection(collection_id, object_ids=object_ids, concept=concept, model_ids=model_ids,
@@ -282,7 +288,7 @@ def order_index(collection_id, object_ids_index_of, object_ids=None, concept=Non
 
 
 @app.get("/{collection_id}/search/order/filter")
-def filter_collection(collection_id, object_ids=None, concept=None, model_ids=None,
+def filter_collection(collection_id, object_ids, concept=None, model_ids=None,
                       filter_text=None, skip=None, limit=None, reverse=False):
     if filter_text is None:
         filter_text = ""
