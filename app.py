@@ -181,11 +181,44 @@ def object_details(collection_id, object_ids):
     return sub.coll.get_presentation_records(as_json=True)
 
 
-@app.get("/{collection_id}/random")
-def random_objects(collection_id, num_objects=1):
-    assert isinstance(num_objects, int)
+
+###### DEFAULT ORDERINGS
+
+
+@app.get("/{collection_id}/default/sample")
+def default_sample(collection_id, k=1):
+    k = int(k)
     cur_coll = get_collection(collection_id)
-    return cur_coll.sample(num_objects).coll.get_presentation_records(as_json=True)
+    n = len(cur_coll)
+    probs = (n-np.arange(n))+1
+    probs = probs/probs.sum()
+
+    return cur_coll.sample(n=k, weights=probs).coll.get_presentation_records(as_json=True)
+    
+
+
+@app.get("/{collection_id}/default/order")
+def default_order(collection_id, skip=None, limit=None, reverse=False, presentation=True):
+    cur_coll = get_collection(collection_id)
+
+    if skip: skip = int(skip)
+    if limit: limit = int(limit)
+    if skip and limit:
+        limit = skip + limit
+    if reverse:
+        cur_coll = cur_coll.iloc[::-1]
+    cur_coll = cur_coll.iloc[skip:limit]
+    return cur_coll.coll.get_presentation_records(as_json=True) if presentation else ordered
+        
+
+
+
+
+@app.get("/{collection_id}/random/sample")
+def random_objects(collection_id, k=1):
+    k = int(k)
+    cur_coll = get_collection(collection_id)
+    return cur_coll.sample(k).coll.get_presentation_records(as_json=True)
 
 
 
