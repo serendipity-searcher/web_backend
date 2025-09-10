@@ -187,6 +187,16 @@ def object_details(collection_id, object_ids):
 
 @app.get("/{collection_id}/default/sample")
 def default_sample(collection_id, k=1):
+    """
+        The `default` family of routes is based on the collection's inherent ordering, namely based on the time (of making) of an object (the actual sort order is fairly complex). 
+
+        The `sample` sub-route samples from this inherent ordering, with sampling weight simply the inverse rank in the order, such that more recent objects are sampled more often (at a linear rate).
+
+        :param collection_id: The ID of the current collection (see `/collections`).
+        :param k: The number of object records to sample.
+        :return: A list of length `k` of sampled object records. 
+    """
+    
     k = int(k)
     cur_coll = get_collection(collection_id)
     n = len(cur_coll)
@@ -199,6 +209,23 @@ def default_sample(collection_id, k=1):
 
 @app.get("/{collection_id}/default/order")
 def default_order(collection_id, skip=None, limit=None, reverse=False, presentation=True):
+    """
+        The `default` family of routes is based on the collection's inherent ordering, namely based on the time (of making) of an object (the actual sort order is fairly complex). 
+
+        The `order` sub-route returns all object records from the given collection in their default collection ordering (which is according to the objects' time).  
+
+        :param collection_id: The ID of the current collection (see `/collections`).
+        
+        :param skip: If given, the first `skip` object records are skipped
+
+        :param limit: If given, the length of the return list of records is limited to `limit` many.
+
+        :param reverse: If True, then the ordering is reversed (i.e. from earliest object to most recent). Default is False.
+
+        :param presentation: (for internal use only)
+       
+        :return: A list of length of object records in their default order. 
+    """
     cur_coll = get_collection(collection_id)
 
     if skip: skip = int(skip)
@@ -216,6 +243,17 @@ def default_order(collection_id, skip=None, limit=None, reverse=False, presentat
 
 @app.get("/{collection_id}/random/sample")
 def random_objects(collection_id, k=1):
+    """
+        The `random` family of routes is completely randomised, ignoring any default orderings or search scores and simply assuming a uniform scoring over the collection. E.g. ordering is therefore not a well-defined action for this family. 
+
+        The `sample` sub-route take a number `k` and randomly samples (at uniform) k object records from the collection.
+
+        :param collection_id: The ID of the current collection (see `/collections`).
+        
+        :param k: The number of object records to sample.
+        
+        :return: A list of length of object records in their default order. 
+    """
     k = int(k)
     cur_coll = get_collection(collection_id)
     return cur_coll.sample(k).coll.get_presentation_records(as_json=True)
@@ -224,6 +262,22 @@ def random_objects(collection_id, k=1):
 
 @app.get("/{collection_id}/search")
 def search_collection(collection_id, object_ids, concept=None, model_ids=None):
+    """
+        The `search` family of routes is based on scoring and ordering the collection according to dynamic search parameters -- objects, concepts and models.
+
+        The family of routes has a "parent", as all other routes depend on the scores returned by it. This also implies that all its "children" inherit this functions parameters, as they need to call the parent before doing their own computations.
+
+        :param collection_id: The ID of the current collection (see `/collections`).
+        
+        :param object_ids: A list of object IDs (also called "object numbers" or "catalogue numbers" to search with.
+
+        :param concept: A string to search the collection -- titles, descriptions, etc -- with (akin to a search string passed to e.g. Google).
+
+        :param model_ids: A list of model IDs (see `/{collection_id}/models`).
+        
+        :return: A list of scores for the entire collection according to their relevance to the current search parameters. 
+    """
+    
     # if is_cached(collection_id, object_ids, concept, model_ids):
     #     return get_cached(collection_id, object_ids, concept, model_ids)
 
@@ -267,6 +321,27 @@ def search_collection(collection_id, object_ids, concept=None, model_ids=None):
 @app.get("/{collection_id}/search/sample")
 def sample_collection(collection_id, object_ids, concept=None, model_ids=None,
                       k=12, ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"):
+    """
+        The `search` family of routes is based on scoring and ordering the collection according to dynamic search parameters -- objects, concepts and models.
+
+        The `sample` sub-route of this family samples `k` objects with weights according to the scores return by its parent route `/{collection_id}/search`.
+
+        :param collection_id: The ID of the current collection (see `/collections`).
+        
+        :param object_ids: A list of object IDs (also called "object numbers" or "catalogue numbers" to search with. Passed to its parent.
+
+        :param concept: A string to search the collection -- titles, descriptions, etc -- with (akin to a search string passed to e.g. Google). Passed to its parent.
+
+        :param model_ids: A list of model IDs (see `/{collection_id}/models`). Passed to its parent. 
+
+        :param ISO_8601_datetime: Used for computing the moon, which influences the sampling weights.
+
+        :param lat_long_degrees: Used for computing the moon, which influences the sampling weights.
+        
+        :return: A list of `k` object records sampled according to the relevance scores computed for the entire collection.
+    """
+    
+    
     cur_coll = get_collection(collection_id)
     cur_search = searches[collection_id]
     moon_force = get_moon(ISO_8601_datetime, lat_long_degrees=lat_long_degrees)
