@@ -183,6 +183,8 @@ def object_details(collection_id, object_ids):
 
 @app.get("/{collection_id}/random")
 def random_objects(collection_id, num_objects=1):
+    assert isinstance(num_objects, int)
+    cur_coll = get_collection(collection_id)
     return cur_coll.sample(num_objects).coll.get_presentation_records(as_json=True)
 
 
