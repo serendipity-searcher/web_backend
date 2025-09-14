@@ -243,6 +243,40 @@ def default_order(collection_id, skip=None, limit=None, reverse=False, presentat
     cur_coll = cur_coll.iloc[skip:limit]
     return cur_coll.coll.get_presentation_records(as_json=True) if presentation else ordered
         
+@app.get("/{collection_id}/default/order/filter")
+def default_filter(collection_id, filter_text=None, skip=None, limit=None, reverse=False, presentation=True):
+    """
+        The `default` family of routes is based on the collection's inherent ordering, namely based on the time (of making) of an object (the actual sort order is fairly complex). 
+
+        The `filter` sub-route returns all object records from the given collection in their default collection ordering (which is according to the objects' time) and filtered by the `filter_text` parameter (simple string matching with the data fields `objectname_label`, `material_label`, `maker_label`, `coiner_label`, the index (object numbers) and titles and descriptions).
+
+        :param collection_id: The ID of the current collection (see `/collections`).
+
+        :param filter_text: The text to match object records with, may be a regular expression (Python `re` syntax).
+        
+        :param skip: If given, the first `skip` object records are skipped
+
+        :param limit: If given, the length of the return list of records is limited to `limit` many.
+
+        :param reverse: If True, then the ordering is reversed (i.e. from earliest object to most recent). Default is False.
+
+        :param presentation: (for internal use only)
+       
+        :return: A list of length of object records in their default order. 
+    """
+    if filter_text is None:
+        filter_text = ""
+    ordered, order_index = default_order(collection_id, skip=None, limit=None, reverse=reverse, presentation=False)
+    filtered = ordered.coll.filter(filter_text)
+
+    if skip: skip = int(skip)
+    if limit: limit = int(limit)
+    if skip and limit:
+        limit = skip + limit
+    filtered = filtered.iloc[skip:limit]
+    order_index = order_index.loc[filtered.index]
+
+    return filtered.coll.get_presentation_records(as_json=True, order_index=order_index)#ordered[keep.loc[ordered.index]]
 
 
 
