@@ -386,7 +386,7 @@ class CollectionAccessor:
 
     ### ROUTE FUNCTIONS
 
-    def get_presentation_records(self, object_numbers=None, as_json=True):   
+    def get_presentation_records(self, object_numbers=None, as_json=True, order_index=None):   
         lang = self._obj.attrs["lang"]
 
         sub = self._obj[self.presentation_cols + ["image_path"]].fillna("")
@@ -419,6 +419,12 @@ class CollectionAccessor:
 
         reverse_names = CollectionAccessor.reverse_names if self._obj.attrs["reverse_names"]\
                             else (lambda x: x)
+
+        if order_index is None: order_index = pd.Series(list(range(len(sub))), index=sub.index)
+        assert order_index.index.equals(sub.index)
+
+        order_index.name = "order_index"
+        sub = sub.join(order_index)
         
         return [{"inventory_number": r.name, 
                  "title": r.title, 
@@ -432,7 +438,8 @@ class CollectionAccessor:
                  "design_place": all_or_onbekend(r.coin_place_label),
                  "production_place": all_or_onbekend(r.creation_place_label),
                  "rights_attribution": display_attribution(r),
-                 "image_path": r.image_path
+                 "image_path": r.image_path,
+                 "order_index": r.order_index #int(order_index.loc[r.name])
                 }
                 for i, r in sub.iterrows()]
 
@@ -445,8 +452,8 @@ class CollectionAccessor:
     def filter(self, text_query, return_df=True, start_time=None, end_time=None, **categorical_values):
         """
          - All operations preserve order (using boolean series, 
-         whose order is the same as that of the original DF, to index), so this
-         function may readily be used on on sorted (i.e. scored) data. (NOT TESTED)
+           whose order is the same as that of the original DF, to index), so this
+           function may readily be used on on sorted (i.e. scored) data. (NOT TESTED)
         """
 
         # TEXTs

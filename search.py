@@ -130,8 +130,8 @@ class Equaliser(Searcher):
         self.index = coll.index
 
     def __call__(self, records):
-        rand_scores = pd.Series([1/len(self.index)]*len(self.index), index=self.index, name=self.id)
-        return rand_scores
+        constant_scores = pd.Series([1/len(self.index)]*len(self.index), index=self.index, name=self.id)
+        return constant_scores
 
 
 class Randomiser(Searcher):

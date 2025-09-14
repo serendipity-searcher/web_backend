@@ -141,6 +141,10 @@ def parse_id_list(id_list_str):
     except ValueError:
         raise s
 
+def get_order_index(scores, object_numbers):
+    return scores.argsort().loc[object_numbers]
+
+
 
 @app.get("/moon")
 def get_moon(ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"): #lat_degrees=51.05, long_degrees=3.71): #location of DMG
@@ -227,6 +231,8 @@ def default_order(collection_id, skip=None, limit=None, reverse=False, presentat
         :return: A list of length of object records in their default order. 
     """
     cur_coll = get_collection(collection_id)
+    reverse = str(reverse).lower() == "true"
+
 
     if skip: skip = int(skip)
     if limit: limit = int(limit)
@@ -350,7 +356,8 @@ def sample_collection(collection_id, object_ids, concept=None, model_ids=None,
 
     scores = search_collection(collection_id, object_ids, concept, model_ids)
     rand_recs = cur_search.sample(cur_coll, scores=scores, temp=moon_force, size=k)
-    return rand_recs.coll.get_presentation_records(as_json=True)
+    order_index = get_order_index(scores, rand_recs.index)
+    return rand_recs.coll.get_presentation_records(as_json=True, order_index=order_index)
 
 
 
@@ -363,14 +370,19 @@ def order_collection(collection_id, object_ids, concept=None, model_ids=None,
 
     scores = search_collection(collection_id, object_ids, concept, model_ids)
 
+    # order_index = get_order_index(scores, rand_recs.index)
+
     ordered = cur_search.order(cur_coll, scores, reverse=reverse)
+    order_index = pd.Series(list(range(len(ordered))), index=ordered.index)
+    
     if skip: skip = int(skip)
     if limit: limit = int(limit)
     if skip and limit:
         limit = skip + limit
     ordered = ordered.iloc[skip:limit]
-    return ordered.coll.get_presentation_records(as_json=True) if presentation else ordered
-
+    order_index = order_index.iloc[skip:limit]
+    if not presentation: return ordered, order_index
+    return ordered.coll.get_presentation_records(as_json=True, order_index=order_index)
 
 @app.get("/{collection_id}/search/order/indexof")
 def order_index(collection_id, object_ids_index_of, object_ids, concept=None, model_ids=None,
@@ -402,11 +414,19 @@ def filter_collection(collection_id, object_ids, concept=None, model_ids=None,
                       filter_text=None, skip=None, limit=None, reverse=False):
     if filter_text is None:
         filter_text = ""
-    ordered = order_collection(collection_id, object_ids, concept, model_ids, 
-                               skip=skip, limit=limit, reverse=reverse, presentation=False)
+    ordered, order_index = order_collection(collection_id, object_ids, concept, model_ids, 
+                               skip=None, limit=None, reverse=reverse, presentation=False)
     filtered = ordered.coll.filter(filter_text)
-    return filtered.coll.get_presentation_records(as_json=True)#ordered[keep.loc[ordered.index]]
 
+    if skip: skip = int(skip)
+    if limit: limit = int(limit)
+    if skip and limit:
+        limit = skip + limit
+    filtered = filtered.iloc[skip:limit]
+    order_index = order_index.loc[filtered.index]
+
+
+    return filtered.coll.get_presentation_records(as_json=True, order_index=order_index)#ordered[keep.loc[ordered.index]]
 
 if __name__ == "__main__":
     is_prod = os.getenv("PROD", "false").lower() == "true"
