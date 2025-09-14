@@ -247,13 +247,18 @@ def default_order(collection_id, skip=None, limit=None, reverse=False, presentat
         limit = skip + limit
     if reverse:
         cur_coll = cur_coll.iloc[::-1]
+        # order_index = pd.Series(range(len(cur_coll)-1, -1, -1), index=cur_coll.index)
+
         order_index = len(cur_coll) - 1 - order_index
+        order_index = order_index.loc[cur_coll.index]
     cur_coll = cur_coll.iloc[skip:limit]
+    order_index = order_index.iloc[skip:limit]
+
 
     if presentation:
         return cur_coll.coll.get_presentation_records(as_json=True, order_index=order_index) 
     else:
-        return ordered, order_index
+        return cur_coll, order_index
         
 @app.get("/{collection_id}/default/order/filter")
 def default_filter(collection_id, filter_text=None, skip=None, limit=None, reverse=False, presentation=True):
