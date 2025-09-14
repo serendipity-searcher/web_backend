@@ -203,11 +203,16 @@ def default_sample(collection_id, k=1):
     
     k = int(k)
     cur_coll = get_collection(collection_id)
+    
     n = len(cur_coll)
     probs = (n-np.arange(n))+1
     probs = probs/probs.sum()
 
-    return cur_coll.sample(n=k, weights=probs).coll.get_presentation_records(as_json=True)
+    sample = cur_coll.sample(n=k, weights=probs)
+    order_index = pd.Series(range(n), index=cur_coll.index)
+    order_index = order_index.loc[sample.index]
+
+    return sample.coll.get_presentation_records(as_json=True, order_index=order_index)
     
 
 
@@ -233,6 +238,8 @@ def default_order(collection_id, skip=None, limit=None, reverse=False, presentat
     cur_coll = get_collection(collection_id)
     reverse = str(reverse).lower() == "true"
 
+    order_index = pd.Series(range(len(cur_coll)), index=cur_coll.index)
+
 
     if skip: skip = int(skip)
     if limit: limit = int(limit)
@@ -240,8 +247,13 @@ def default_order(collection_id, skip=None, limit=None, reverse=False, presentat
         limit = skip + limit
     if reverse:
         cur_coll = cur_coll.iloc[::-1]
+        order_index = len(cur_coll) - 1 - order_index
     cur_coll = cur_coll.iloc[skip:limit]
-    return cur_coll.coll.get_presentation_records(as_json=True) if presentation else ordered
+
+    if presentation:
+        return cur_coll.coll.get_presentation_records(as_json=True, order_index=order_index) 
+    else:
+        return ordered, order_index
         
 @app.get("/{collection_id}/default/order/filter")
 def default_filter(collection_id, filter_text=None, skip=None, limit=None, reverse=False, presentation=True):
@@ -281,22 +293,22 @@ def default_filter(collection_id, filter_text=None, skip=None, limit=None, rever
 
 
 
-@app.get("/{collection_id}/random/sample")
-def random_objects(collection_id, k=1):
-    """
-        The `random` family of routes is completely randomised, ignoring any default orderings or search scores and simply assuming a uniform scoring over the collection. E.g. ordering is therefore not a well-defined action for this family. 
+# @app.get("/{collection_id}/random/sample")
+# def random_objects(collection_id, k=1):
+#     """
+#         The `random` family of routes is completely randomised, ignoring any default orderings or search scores and simply assuming a uniform scoring over the collection. E.g. ordering is therefore not a well-defined action for this family. 
 
-        The `sample` sub-route take a number `k` and randomly samples (at uniform) k object records from the collection.
+#         The `sample` sub-route take a number `k` and randomly samples (at uniform) k object records from the collection.
 
-        :param collection_id: The ID of the current collection (see `/collections`).
+#         :param collection_id: The ID of the current collection (see `/collections`).
         
-        :param k: The number of object records to sample.
+#         :param k: The number of object records to sample.
         
-        :return: A list of length of object records in their default order. 
-    """
-    k = int(k)
-    cur_coll = get_collection(collection_id)
-    return cur_coll.sample(k).coll.get_presentation_records(as_json=True)
+#         :return: A list of length of object records in their default order. 
+#     """
+#     k = int(k)
+#     cur_coll = get_collection(collection_id)
+#     return cur_coll.sample(k).coll.get_presentation_records(as_json=True)
 
 
 
@@ -408,6 +420,8 @@ def order_collection(collection_id, object_ids, concept=None, model_ids=None,
 
     ordered = cur_search.order(cur_coll, scores, reverse=reverse)
     order_index = pd.Series(list(range(len(ordered))), index=ordered.index)
+    if reverse:
+        order_index = len(ordered) - 1 - order_index
     
     if skip: skip = int(skip)
     if limit: limit = int(limit)
@@ -415,7 +429,8 @@ def order_collection(collection_id, object_ids, concept=None, model_ids=None,
         limit = skip + limit
     ordered = ordered.iloc[skip:limit]
     order_index = order_index.iloc[skip:limit]
-    if not presentation: return ordered, order_index
+    if not presentation: 
+        return ordered, order_index
     return ordered.coll.get_presentation_records(as_json=True, order_index=order_index)
 
 @app.get("/{collection_id}/search/order/indexof")
