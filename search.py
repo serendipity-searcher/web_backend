@@ -107,8 +107,8 @@ class Search:
             return coll.sort_values(by="sort_rank")
 
         sorted_index = scores.sort_values().index[::-1] # ORDER HAS HIGHEST SCORE AT TOP; IT'S THE INVERSE OF SORT
-        if reverse:
-            sorted_index = sorted_index[::-1]
+        # if reverse:
+        #     sorted_index = sorted_index[::-1]
         return coll.loc[sorted_index]
 
     

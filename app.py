@@ -141,9 +141,6 @@ def parse_id_list(id_list_str):
     except ValueError:
         raise s
 
-def get_order_index(scores, object_numbers):
-    return scores.argsort().loc[object_numbers]
-
 
 
 @app.get("/moon")
@@ -176,6 +173,13 @@ def available_models(collection_id):
     return [dict(id=searcher.id, name=searcher.name) for searcher in cur_search.searchers]
 
 
+@app.get("/{collection_id}/object-numbers")
+def object_details(collection_id):
+    cur_coll = get_collection(collection_id)
+    return cur_coll.index.to_list()
+
+
+
 @app.get("/{collection_id}/object-details")
 def object_details(collection_id, object_ids):
     cur_coll = get_collection(collection_id)
@@ -190,7 +194,7 @@ def object_details(collection_id, object_ids):
 
 
 @app.get("/{collection_id}/default/sample")
-def default_sample(collection_id, k=1):
+def default_sample(collection_id, k=1, ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"):
     """
         The `default` family of routes is based on the collection's inherent ordering, namely based on the time (of making) of an object (the actual sort order is fairly complex). 
 
@@ -203,12 +207,19 @@ def default_sample(collection_id, k=1):
     
     k = int(k)
     cur_coll = get_collection(collection_id)
+    moon_force = get_moon(ISO_8601_datetime, lat_long_degrees=lat_long_degrees)
+
     
     n = len(cur_coll)
-    probs = (n-np.arange(n))+1
-    probs = probs/probs.sum()
+    # probs = (n-np.arange(n))+1
+    # probs = probs/probs.sum()
 
-    sample = cur_coll.sample(n=k, weights=probs)
+    scores = ((n-np.arange(n))+1)/n
+    tempered_scores = np.exp((scores/moon_force))
+    tempered_scores = tempered_scores/tempered_scores.sum()
+
+
+    sample = cur_coll.sample(n=k, weights=tempered_scores)
     order_index = pd.Series(range(n), index=cur_coll.index)
     order_index = order_index.loc[sample.index]
 
@@ -235,30 +246,27 @@ def default_order(collection_id, skip=None, limit=None, reverse=False, presentat
        
         :return: A list of length of object records in their default order. 
     """
-    cur_coll = get_collection(collection_id)
     reverse = str(reverse).lower() == "true"
+
+    cur_coll = get_collection(collection_id)
+    cur_coll = cur_coll.sort_values(by="sort_rank")
 
     order_index = pd.Series(range(len(cur_coll)), index=cur_coll.index)
 
+    if reverse:
+        cur_coll = cur_coll.iloc[::-1]
+        order_index = order_index.iloc[::-1]
 
     if skip: skip = int(skip)
     if limit: limit = int(limit)
     if skip and limit:
         limit = skip + limit
-    if reverse:
-        cur_coll = cur_coll.iloc[::-1]
-        # order_index = pd.Series(range(len(cur_coll)-1, -1, -1), index=cur_coll.index)
-
-        order_index = len(cur_coll) - 1 - order_index
-        order_index = order_index.loc[cur_coll.index]
     cur_coll = cur_coll.iloc[skip:limit]
     order_index = order_index.iloc[skip:limit]
 
-
     if presentation:
         return cur_coll.coll.get_presentation_records(as_json=True, order_index=order_index) 
-    else:
-        return cur_coll, order_index
+    return cur_coll, order_index
         
 @app.get("/{collection_id}/default/order/filter")
 def default_filter(collection_id, filter_text=None, skip=None, limit=None, reverse=False, presentation=True):
@@ -285,13 +293,14 @@ def default_filter(collection_id, filter_text=None, skip=None, limit=None, rever
         filter_text = ""
     ordered, order_index = default_order(collection_id, skip=None, limit=None, reverse=reverse, presentation=False)
     filtered = ordered.coll.filter(filter_text)
+    order_index = order_index.loc[filtered.index]
 
     if skip: skip = int(skip)
     if limit: limit = int(limit)
     if skip and limit:
         limit = skip + limit
     filtered = filtered.iloc[skip:limit]
-    order_index = order_index.loc[filtered.index]
+    order_index = order_index.iloc[skip:limit]
 
     return filtered.coll.get_presentation_records(as_json=True, order_index=order_index)#ordered[keep.loc[ordered.index]]
 
@@ -377,7 +386,7 @@ def search_collection(collection_id, object_ids, concept=None, model_ids=None):
 
 @app.get("/{collection_id}/search/sample")
 def sample_collection(collection_id, object_ids, concept=None, model_ids=None,
-                      k=12, ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"):
+                      k=12, ISO_8601_datetime=None, lat_long_degrees="51.05,3.71", temp=None):
     """
         The `search` family of routes is based on scoring and ordering the collection according to dynamic search parameters -- objects, concepts and models.
 
@@ -403,12 +412,21 @@ def sample_collection(collection_id, object_ids, concept=None, model_ids=None,
     cur_search = searches[collection_id]
     moon_force = get_moon(ISO_8601_datetime, lat_long_degrees=lat_long_degrees)
     k = int(k)
+    if temp:
+        moon_force = float(temp)
 
 
     scores = search_collection(collection_id, object_ids, concept, model_ids)
+    order_index = scores.argsort()
+    
     rand_recs = cur_search.sample(cur_coll, scores=scores, temp=moon_force, size=k)
-    order_index = get_order_index(scores, rand_recs.index)
-    return rand_recs.coll.get_presentation_records(as_json=True, order_index=order_index)
+    sample_order_index = order_index.loc[rand_recs.index]
+
+    original_recs = cur_coll.loc[parse_id_list(object_ids)]
+    original_order_index = order_index.loc[original_recs.index]
+    
+    return {"original_records": original_recs.coll.get_presentation_records(as_json=True, order_index=original_order_index),
+            "sampled_records": rand_recs.coll.get_presentation_records(as_json=True, order_index=sample_order_index)}
 
 
 
@@ -423,10 +441,12 @@ def order_collection(collection_id, object_ids, concept=None, model_ids=None,
 
     # order_index = get_order_index(scores, rand_recs.index)
 
-    ordered = cur_search.order(cur_coll, scores, reverse=reverse)
-    order_index = pd.Series(list(range(len(ordered))), index=ordered.index)
+    ordered = cur_search.order(cur_coll, scores)
+    order_index = pd.Series(range(len(ordered)), index=ordered.index)
+    
     if reverse:
-        order_index = len(ordered) - 1 - order_index
+        ordered = ordered.iloc[::-1]
+        order_index = order_index.iloc[::-1]
     
     if skip: skip = int(skip)
     if limit: limit = int(limit)
@@ -434,51 +454,55 @@ def order_collection(collection_id, object_ids, concept=None, model_ids=None,
         limit = skip + limit
     ordered = ordered.iloc[skip:limit]
     order_index = order_index.iloc[skip:limit]
-    if not presentation: 
-        return ordered, order_index
-    return ordered.coll.get_presentation_records(as_json=True, order_index=order_index)
-
-@app.get("/{collection_id}/search/order/indexof")
-def order_index(collection_id, object_ids_index_of, object_ids, concept=None, model_ids=None,
-                     skip=None, limit=None, reverse=False):
     
-    ordered = order_collection(collection_id, object_ids=object_ids, concept=concept, model_ids=model_ids,
-                     skip=skip, limit=limit, reverse=reverse, presentation=False)
+    if presentation: 
+        return ordered.coll.get_presentation_records(as_json=True, order_index=order_index)
+    return ordered, order_index
+
+# @app.get("/{collection_id}/search/order/indexof")
+# def order_index(collection_id, object_ids_index_of, object_ids, concept=None, model_ids=None,
+#                      skip=None, limit=None, reverse=False):
+    
+#     ordered = order_collection(collection_id, object_ids=object_ids, concept=concept, model_ids=model_ids,
+#                      skip=skip, limit=limit, reverse=reverse, presentation=False)
 
     
 
-    object_ids_index_of = parse_id_list(object_ids_index_of)
-    print(object_ids_index_of)
+#     object_ids_index_of = parse_id_list(object_ids_index_of)
+#     print(object_ids_index_of)
     
-    cur_indices = {}
-    for i in object_ids_index_of:
-        bools = (ordered.index == i)
-        if bools.sum() < 1:
-            raise ValueError(f"object number {i} is not in the index!")
-        if bools.sum() > 1:
-            raise ValueError("DUPLICATES!?!?! (this should not happen)")
+#     cur_indices = {}
+#     for i in object_ids_index_of:
+#         bools = (ordered.index == i)
+#         if bools.sum() < 1:
+#             raise ValueError(f"object number {i} is not in the index!")
+#         if bools.sum() > 1:
+#             raise ValueError("DUPLICATES!?!?! (this should not happen)")
 
-        cur_indices[i] = int(bools.nonzero()[0][0])
+#         cur_indices[i] = int(bools.nonzero()[0][0])
     
-    return cur_indices
+#     return cur_indices
 
 
 @app.get("/{collection_id}/search/order/filter")
 def filter_collection(collection_id, object_ids, concept=None, model_ids=None,
                       filter_text=None, skip=None, limit=None, reverse=False):
-    if filter_text is None:
-        filter_text = ""
+    
+    if filter_text is None: filter_text = ""
+    
     ordered, order_index = order_collection(collection_id, object_ids, concept, model_ids, 
                                skip=None, limit=None, reverse=reverse, presentation=False)
+    
     filtered = ordered.coll.filter(filter_text)
+    order_index = order_index.loc[filtered.index]
+
 
     if skip: skip = int(skip)
     if limit: limit = int(limit)
     if skip and limit:
         limit = skip + limit
     filtered = filtered.iloc[skip:limit]
-    order_index = order_index.loc[filtered.index]
-
+    order_index = order_index.iloc[skip:limit]
 
     return filtered.coll.get_presentation_records(as_json=True, order_index=order_index)#ordered[keep.loc[ordered.index]]
 
