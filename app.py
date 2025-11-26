@@ -192,7 +192,6 @@ def object_details(collection_id, object_ids):
 
 ###### DEFAULT ORDERINGS
 
-
 @app.get("/{collection_id}/default/sample")
 def default_sample(collection_id, k=1, ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"):
     """
@@ -417,7 +416,9 @@ def sample_collection(collection_id, object_ids, concept=None, model_ids=None,
 
 
     scores = search_collection(collection_id, object_ids, concept, model_ids)
-    order_index = scores.argsort()
+    # order_index = scores.argsort()
+    order_index = pd.Series(range(len(scores)), index=scores.sort_values(ascending=False).index)
+
     
     rand_recs = cur_search.sample(cur_coll, scores=scores, temp=moon_force, size=k)
     sample_order_index = order_index.loc[rand_recs.index]
@@ -459,29 +460,29 @@ def order_collection(collection_id, object_ids, concept=None, model_ids=None,
         return ordered.coll.get_presentation_records(as_json=True, order_index=order_index)
     return ordered, order_index
 
-# @app.get("/{collection_id}/search/order/indexof")
-# def order_index(collection_id, object_ids_index_of, object_ids, concept=None, model_ids=None,
-#                      skip=None, limit=None, reverse=False):
+@app.get("/{collection_id}/search/order/indexof")
+def order_index(collection_id, object_ids_index_of, object_ids, concept=None, model_ids=None, reverse=False):
+    object_ids_index_of = parse_id_list(object_ids_index_of)
     
-#     ordered = order_collection(collection_id, object_ids=object_ids, concept=concept, model_ids=model_ids,
-#                      skip=skip, limit=limit, reverse=reverse, presentation=False)
+    ordered, order_index = order_collection(collection_id, object_ids=object_ids, concept=concept, model_ids=model_ids,
+                     skip=None, limit=None, reverse=reverse, presentation=False)
 
-    
+    return dict(order_index.loc[object_ids_index_of].items())
 
-#     object_ids_index_of = parse_id_list(object_ids_index_of)
-#     print(object_ids_index_of)
-    
-#     cur_indices = {}
-#     for i in object_ids_index_of:
-#         bools = (ordered.index == i)
-#         if bools.sum() < 1:
-#             raise ValueError(f"object number {i} is not in the index!")
-#         if bools.sum() > 1:
-#             raise ValueError("DUPLICATES!?!?! (this should not happen)")
+    # object_ids_index_of = parse_id_list(object_ids_index_of)
+    # print(object_ids_index_of)
+    # print(ordered
+    # cur_indices = {}
+    # for i in object_ids_index_of:
+    #     bools = (ordered.index == i)
+    #     if bools.sum() < 1:
+    #         raise ValueError(f"object number {i} is not in the index!")
+    #     if bools.sum() > 1:
+    #         raise ValueError("DUPLICATES!?!?! (this should not happen)")
 
-#         cur_indices[i] = int(bools.nonzero()[0][0])
+    #     cur_indices[i] = int(bools.nonzero()[0][0])
     
-#     return cur_indices
+    # return cur_indices
 
 
 @app.get("/{collection_id}/search/order/filter")
