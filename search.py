@@ -24,6 +24,9 @@ from collections import Counter
 import networkx as nx
 
 
+SORT_KIND = "mergesort"
+
+
 
 class Search:
     def __init__(self, searchers, is_cached=False):
@@ -59,7 +62,7 @@ class Search:
             
         searcher_scores = [s(recs) for s in cur_searchers]# self.searchers]
         searcher_scores = pd.DataFrame({s.name: s for s in searcher_scores})
-        searcher_scores.loc[recs.index] = 0.
+        # searcher_scores.loc[recs.index] = 0.
         
         merged_scores = self.merge_scores(searcher_scores)        
 
@@ -99,17 +102,20 @@ class Search:
     #     return coll.iloc[sort_idx]
 
     def order(self, coll, scores=None, reverse=False):
+        default_ordered_coll = coll.sort_values(by="sort_rank", kind=SORT_KIND)
         if scores is None:
-            return coll.sort_values(by="sort_rank")
+            return default_ordered_coll  # coll.sort_values(by="sort_rank", kind=SORT_KIND)
 
         if (scores.var()**0.5)/(scores.max()-scores.min()) < 0.001:
             print("GIVEN SCORES HAVE TOO LITTLE VARIANCE, FALLING BACK TO DEFAULT ORDERING (BY TIME)")
-            return coll.sort_values(by="sort_rank")
+            return default_ordered_coll  # coll.sort_values(by="sort_rank", kind=SORT_KIND)
 
-        sorted_index = scores.sort_values().index[::-1] # ORDER HAS HIGHEST SCORE AT TOP; IT'S THE INVERSE OF SORT
+
+        sorted_index = scores.loc[default_ordered_coll.index].sort_values(kind=SORT_KIND, 
+                                                                    ascending=False).index  # [::-1] # ORDER HAS HIGHEST SCORE AT TOP; IT'S THE INVERSE OF SORT
         # if reverse:
         #     sorted_index = sorted_index[::-1]
-        return coll.loc[sorted_index]
+        return default_ordered_coll.loc[sorted_index]
 
     
 class Searcher:

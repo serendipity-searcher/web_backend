@@ -20,6 +20,7 @@ import pandas as pd
 from data.data import CollectionAccessor, ImageHandler, EmbeddingSpaceAccessor
 
 from search import Search, Randomiser, Equaliser, GraphSearcher, EmbeddingSearcher, TextEmbeddingSearcher
+from search import SORT_KIND
 from moon import MOON, Moon
 
 def init_MKG():
@@ -248,7 +249,7 @@ def default_order(collection_id, skip=None, limit=None, reverse=False, presentat
     reverse = str(reverse).lower() == "true"
 
     cur_coll = get_collection(collection_id)
-    cur_coll = cur_coll.sort_values(by="sort_rank")
+    cur_coll = cur_coll.sort_values(by="sort_rank", kind=SORT_KIND)
 
     order_index = pd.Series(range(len(cur_coll)), index=cur_coll.index)
 
@@ -417,7 +418,7 @@ def sample_collection(collection_id, object_ids, concept=None, model_ids=None,
 
     scores = search_collection(collection_id, object_ids, concept, model_ids)
     # order_index = scores.argsort()
-    order_index = pd.Series(range(len(scores)), index=scores.sort_values(ascending=False).index)
+    order_index = pd.Series(range(len(scores)), index=scores.sort_values(ascending=False, kind=SORT_KIND).index)
 
     
     rand_recs = cur_search.sample(cur_coll, scores=scores, temp=moon_force, size=k)
