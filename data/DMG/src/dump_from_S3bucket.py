@@ -6,6 +6,12 @@
 
  # - bucket name: dmg-images-searcher
  # - region: eu-west-2
+ # - access key & super secret key: SEE OLIVIER's EMAIL FROM 23.01.2025
+
+
+ 
+ 
+
 
 # Observations
 
@@ -31,7 +37,7 @@ import sys
 # setting path
 sys.path.append(DATA_DIR)
 
-from data import ImageHandler
+from data import DMGImageHandler
 
 from tqdm import tqdm
 
@@ -72,7 +78,7 @@ def validate_filenames(filenames):
     files = [(f,)+os.path.split(f) for f in filenames]
     files = pd.DataFrame(files, columns=["raw", "prefix", "filename"])
     # files["object_number"] = files.raw.apply(get_object_number)
-    obj_nums = ImageHandler.object_number_from_path("./" + files.raw)
+    obj_nums = DMGImageHandler.object_number_from_path("./" + files.raw)
 
     files["object_number"] = obj_nums
 
