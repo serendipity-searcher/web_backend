@@ -290,7 +290,7 @@ class CollectionAccessor:
             df[filled_time_col] = df[filled_time_col].fillna(df[alt_time_col])
                   
         
-        today_interval = "/"+dt.datetime.today().strftime("%Y-%m-%d")
+        today_interval = "/"+dt.datetime.today().pip install imagedominantcolorstrftime("%Y-%m-%d")
         # df[cls.time_cols] = df[cls.time_cols].fillna(today_interval)
         df[filled_time_col] = df[filled_time_col].fillna(today_interval)
 
@@ -438,7 +438,7 @@ class CollectionAccessor:
                  "design_place": all_or_onbekend(r.coin_place_label),
                  "production_place": all_or_onbekend(r.creation_place_label),
                  "rights_attribution": display_attribution(r),
-                 "image_path": r.image_path,
+                 "image_path": r.image_path if r.image_path else [],
                  "order_index": r.order_index #int(order_index.loc[r.name])
                 }
                 for i, r in sub.iterrows()]

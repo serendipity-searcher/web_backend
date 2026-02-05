@@ -112,23 +112,25 @@ class Search:
 
 
         sorted_index = scores.loc[default_ordered_coll.index].sort_values(kind=SORT_KIND, 
-<<<<<<< HEAD
                                                                     ascending=False).index  # [::-1] # ORDER HAS HIGHEST SCORE AT TOP; IT'S THE INVERSE OF SORT -> asccending=False
-=======
-                                                                    ascending=False).index  # [::-1] # ORDER HAS HIGHEST SCORE AT TOP; IT'S THE INVERSE OF SORT
->>>>>>> 8f980566abeb78cd1afe799cb763d0a23753ad5e
         # if reverse:
         #     sorted_index = sorted_index[::-1]
         return default_ordered_coll.loc[sorted_index]
 
     
 class Searcher:
-    serial_number = 0
+    # serial_number = 0
+    known_names = dict()
     def __init__(self, name):
         self.name = name
+        if name in Searcher.known_names:
+            self.id = name + "-" + str(Searcher.known_names[name])
+            Searcher.known_names[name] += 1
+        else:
+            self.id = name
+            Searcher.known_names[name] = 1
 
-        self.id = name + str(Searcher.serial_number)
-        Searcher.serial_number += 1
+        
 
     def __id__(self):
         return self.id

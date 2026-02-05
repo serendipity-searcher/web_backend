@@ -40,15 +40,15 @@ def init_MKG():
     
     sem_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
                                        loadXD=None)
-    concept_search = TextEmbeddingSearcher(sem_embs, name="ConceptSearcher")
+    concept_search = TextEmbeddingSearcher(sem_embs, name="concept-searcher")
 
 
     sem_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
                                        loadXD=32)
-    sem_searcher = EmbeddingSearcher(sem_embs, name="SemanticSearcher")
+    sem_searcher = EmbeddingSearcher(sem_embs, name="semantic-searcher")
     
     viz_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/vitmae", loadXD=32)
-    viz_searcher = EmbeddingSearcher(viz_embs, name="VisualSearcher")
+    viz_searcher = EmbeddingSearcher(viz_embs, name="visual-searcher")
 
     s = Search([kg_searcher, sem_searcher, viz_searcher])
     return df, s, concept_search
@@ -76,15 +76,15 @@ def init_DMG():
 
     sem_embs = EmbeddingSpaceAccessor.load(DMG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
                                        loadXD=None)
-    concept_search = TextEmbeddingSearcher(sem_embs, name="ConceptSearcher")
+    concept_search = TextEmbeddingSearcher(sem_embs, name="concept-searcher")
 
 
     sem_embs = EmbeddingSpaceAccessor.load(DMG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
                                        loadXD=32)
-    sem_searcher = EmbeddingSearcher(sem_embs, name="SemanticSearcher")
+    sem_searcher = EmbeddingSearcher(sem_embs, name="semantic-searcher")
     
     viz_embs = EmbeddingSpaceAccessor.load(DMG_DIR+"/generated_data/vitmae", loadXD=32)
-    viz_searcher = EmbeddingSearcher(viz_embs, name="VisualSearcher")
+    viz_searcher = EmbeddingSearcher(viz_embs, name="visual-searcher")
 
     s = Search([kg_searcher, sem_searcher, viz_searcher])
     return df, s, concept_search
