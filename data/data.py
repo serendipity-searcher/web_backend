@@ -443,7 +443,7 @@ class CollectionAccessor:
                 }
                 for i, r in sub.iterrows()]
 
-
+    
     # @staticmethod
     # def parse_query(query):
     #     return query

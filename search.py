@@ -175,7 +175,7 @@ class GraphSearcher(Searcher):
                          if (v1 and v2) and (not v1 == v2)]
         return nx.from_edgelist(cat_obj_links+list(set(cat_cat_links)))
     
-    def __init__(self, coll, name="KGSearcher"):
+    def __init__(self, coll, name="graph-searcher"):
         super().__init__(name)    
         
         self.obj_nodes = set(coll.index)
