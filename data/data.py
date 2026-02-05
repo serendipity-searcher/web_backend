@@ -20,7 +20,7 @@ import umap.umap_ as umap
 
 # as documented here: https://pandas.pydata.org/docs/development/extending.html
 @pd.api.extensions.register_dataframe_accessor("emb_space")
-class EmbeddingSpaceAccessor:   
+class EmbeddingSpaceAccessor:
     @staticmethod
     def load(emb_dir, loadXD=None, from_tsv=False, index_col="object_number", index_subset=None):
         base_path = f"{emb_dir}/embeddings"
@@ -31,7 +31,7 @@ class EmbeddingSpaceAccessor:
                 to_load = base_path + ext
         else:
             to_load = base_path + ext
-        
+
         emb = pd.read_csv(to_load, sep="\t" if from_tsv else ",")
         emb = emb.set_index(index_col).sort_index()
         if index_subset is not None: emb = emb.loc[index_subset]
@@ -42,15 +42,15 @@ class EmbeddingSpaceAccessor:
         # # else:
         # #     emb = pd.read_csv(f"{emb_dir}/embeddings.csv")
 
-        #     pbar = tqdm(sorted(glob(f"{emb_dir}/batch_*.csv")), 
+        #     pbar = tqdm(sorted(glob(f"{emb_dir}/batch_*.csv")),
         #                 desc="[EmbeddingSpaceAccessor]: loading high-dimensional embedding space...")
         #     emb = pd.concat([pd.read_csv(f) for f in pbar])
 
         # emb = emb.set_index(index_col).sort_index()
-        
+
         # return emb
 
-    
+
     def __init__(self, pandas_obj):
         self._obj = pandas_obj
 
@@ -60,7 +60,7 @@ class EmbeddingSpaceAccessor:
     def umap(self, save_to=None, to_tsv=False, **umap_params):
         data = self._obj.to_numpy()
         min_dist = (data.var()**0.5/2)
-        default_params = dict(metric="cosine", n_neighbors=10, 
+        default_params = dict(metric="cosine", n_neighbors=10,
                              min_dist=min_dist, spread=min_dist*2, n_components=32)
         default_params.update(umap_params)
         reducer = umap.UMAP(**default_params)
@@ -80,7 +80,7 @@ class ImageHandler:
             ValueError(f"ImageHandler doesn't know a collection called {collection_name}!")
 
         return self
-        
+
     # def __init__(se
 
 class MKGImageHandler:
@@ -88,8 +88,8 @@ class MKGImageHandler:
         paths = pd.Series(glob(image_folder+"/*"), name="image_path").fillna("")
         if paths.isna().all() or len(paths) < 1:
             print(f"WARNING: {image_folder} is empty! Is the path correct?")
-        
-        if not keep_prefix: 
+
+        if not keep_prefix:
             paths = paths.str.replace(image_folder+"/", "")
 
         obj_nums = self.object_number_from_path(paths)
@@ -111,18 +111,18 @@ class DMGImageHandler:
         paths = pd.Series(glob(image_folder+"/*/*"), name="image_path").fillna("")
         if paths.isna().all() or len(paths) < 1:
             print(f"WARNING: {image_folder} is empty! Is the path correct?")
-            
-        if not keep_prefix: 
+
+        if not keep_prefix:
             paths = paths.str.replace(image_folder, "")
 
-        
+
         obj_nums = self.object_number_from_path(paths)
         paths.index = obj_nums
         if imploded:
             paths = paths.groupby(paths.index).apply(list)
         self._obj = paths
 
-    
+
     @staticmethod
     def parse_filepath(s):#     folder, file = s.rsplit("/", maxsplit=2)#[1:]
 
@@ -132,14 +132,14 @@ class DMGImageHandler:
         except ValueError:
             obj_rendition = file
             extension = None
-            
+
         try:
             obj_num, rendition_ind =  obj_rendition.rsplit("$", maxsplit=1)
         except ValueError:
             obj_num = obj_rendition
             rendition_ind = None
         # rendition_id = ((rendition_ind[0] if rendition_ind[0] else None) if rendition_ind else None)
-        return dict(path=folder, object_number=obj_num, 
+        return dict(path=folder, object_number=obj_num,
                     rendition_index=rendition_ind, file_extension=extension)
 
     # applies directly to Series objects
@@ -150,22 +150,22 @@ class DMGImageHandler:
         obj_nums.name = "object_number"
         return obj_nums
 
-    
+
     # def align_with_other(self, other, how="right"):
     #     pass
 
-    
+
     def merge_with_other(self, other, how="right"):
         return self._obj.join(other, how=how)
-        
+
 
 class StaticTextTranslator:
     en = ["and_", "collection_of", "made_of", "unknown", "before", "after"]
-    
+
     nl = ["en", "verzameling van", "gemaakt van", "onbekend", "voor", "na"]
 
     de = ["und", "Sammlung von", "gemacht aus", "unbekannt", "vor", "nach"]
-          
+
     def __init__(self, language_code):
         implemented = "en", "nl", "de"
         assert language_code in implemented
@@ -176,7 +176,7 @@ class StaticTextTranslator:
             (StaticTextTranslator.nl if (language_code == "nl") else StaticTextTranslator.de))
 
         self.__dict__.update(dict(zip(self.en, vals)))
-          
+
 
 
 @pd.api.extensions.register_dataframe_accessor("coll")
@@ -184,16 +184,16 @@ class CollectionAccessor:
     primary_id = "object_number"
 
     text_cols = ["title", "description", "objectname_label", "material_label"]
-    
+
     time_cols = ['coin_time', 'creation_time', 'acquisition_time']
-    
-    # categorical_cols = ['objectname_URI', 'subcollection_URI', 
+
+    # categorical_cols = ['objectname_URI', 'subcollection_URI',
     #                     'material_URI', 'part_label', 'part_material_URI', 'creation_place_URI',
     #                     'maker_URI', 'technique_URI', 'coin_place_URI', 'coiner_URI']
-    
-    
-    # label_cols = ['objectname_label', 'subcollection_name', 'material_label', 'part_label', 'part_material_label', 
-    #                   'creation_time', 'creation_place_label', 'maker_label', 'technique_label', 'coin_time', 
+
+
+    # label_cols = ['objectname_label', 'subcollection_name', 'material_label', 'part_label', 'part_material_label',
+    #                   'creation_time', 'creation_place_label', 'maker_label', 'technique_label', 'coin_time',
     #                   'coin_place_label', 'coiner_label']
 
 
@@ -203,17 +203,17 @@ class CollectionAccessor:
                            technique_URI="technique_label",
                            # part_label="part_label",
                            # part_material_URI="part_material_label",
-                           
+
                            creation_place_URI="creation_place_label",
                            maker_URI="maker_label",
                            coin_place_URI="coin_place_label",
                            coiner_URI="coiner_label"
                           )
-                           
-    
-    presentation_cols = ["title", "description", 
+
+
+    presentation_cols = ["title", "description",
                              'maker_label', 'creation_time', "creation_place_label",
-                             'coiner_label', 'coin_time', "coin_place_label", 
+                             'coiner_label', 'coin_time', "coin_place_label",
                             "rights", "attribution"
                             ]
 
@@ -222,7 +222,7 @@ class CollectionAccessor:
 
     list_cols = []
     parsed_dates_memo = {}
-    
+
     @classmethod
     def parse_lists(cls, series, sep="&semi;"):
         if not series.dtype == object: return series
@@ -247,12 +247,12 @@ class CollectionAccessor:
 
     # @staticmethod
     # def metadata_from_file(f):
-        
-        
-        
-    
+
+
+
+
     @classmethod
-    def get_DMG(cls, pub_path, priv_path=None, rights_path=None, 
+    def get_DMG(cls, pub_path, priv_path=None, rights_path=None,
                 image_handler=None, erase_duplicates=False, **metadata):
         df = pd.read_csv(pub_path).set_index("object_number")
         if priv_path:
@@ -283,36 +283,36 @@ class CollectionAccessor:
 
         df[cls.time_cols] = df[cls.time_cols].replace({"/": None, "..": None})#.fillna(None)
         ### REMOVE: PART OF EXTRACTION
-                
+
         filled_time_col = "time"
         df[filled_time_col] = df[cls.time_cols[0]]
         for alt_time_col in cls.time_cols[1:]:
             df[filled_time_col] = df[filled_time_col].fillna(df[alt_time_col])
-                  
-        
-        today_interval = "/"+dt.datetime.today().pip install imagedominantcolorstrftime("%Y-%m-%d")
+
+
+        today_interval = "/"+dt.datetime.today().strftime("%Y-%m-%d")
         # df[cls.time_cols] = df[cls.time_cols].fillna(today_interval)
         df[filled_time_col] = df[filled_time_col].fillna(today_interval)
 
         ### REMOVE: PART OF EXTRACTION
 
-                
+
         # df[cls.time_cols] = df[cls.time_cols].apply(cls.parse_edtf_memoised)
         df[filled_time_col] = cls.parse_edtf_memoised(df[filled_time_col])
-        
-        
+
+
         # sorted_df = df
         # for t_col in tqdm(cls.time_cols, desc="sorting by time columns"):
         #     sorted_df = sorted_df.sort_values(by=t_col, kind="stable")
         # sorted_df["sort_rank"] = pd.RangeIndex(1, len(sorted_df)+1)
-        
-        
+
+
         sorted_df = df.sort_index().sort_values(by=filled_time_col, kind="stable")
         sorted_df["sort_rank"] = pd.RangeIndex(1, len(sorted_df)+1)
 
         return sorted_df
 
-    
+
     @classmethod
     def get_MKG(cls, metadata_path, image_handler=None, erase_duplicates=False, **metadata):
         df = pd.read_csv(metadata_path).set_index("object_number")
@@ -355,22 +355,22 @@ class CollectionAccessor:
         if col_name in self.list_cols:
             return self._obj[col_name].explode()
         return self._obj[col_name]
-        
-    
+
+
     def _get_texts(self, r):
         lang = self._obj.attrs["lang"]
         title = r.title if r.title else ""
         description = r.description if r.description else ""
-    
+
         if not title and not description:
             obj_names = r.objectname_label
             mat_names = r.material_label
-    
+
             if isinstance(obj_names, list):
                 t = f"{lang.collection_of} {', '.join(obj_names[:-1])} {lang.and_} {obj_names[-1]}"
             else:
                 t = f"{obj_names}"
-    
+
             if isinstance(mat_names, list):
                 t += f" {lang.made_of} {', '.join(mat_names[:-1])} {lang.and_} {mat_names[-1]}"
             elif mat_names:
@@ -382,30 +382,30 @@ class CollectionAccessor:
 
     def get_texts(self):
         return self._obj.fillna("").apply(self._get_texts, axis=1)
-    
+
 
     ### ROUTE FUNCTIONS
 
-    def get_presentation_records(self, object_numbers=None, as_json=True, order_index=None):   
+    def get_presentation_records(self, object_numbers=None, as_json=True, order_index=None):
         lang = self._obj.attrs["lang"]
 
         sub = self._obj[self.presentation_cols + ["image_path"]].fillna("")
         if object_numbers is not None: sub = sub.loc[object_numbers]
-        
+
         cutoffs = {"title": 100, "description": 500}
         for c, i in cutoffs.items():
             sub[c] = sub[c].apply(
                 lambda s: ((s[:i] + " …") if len(s) > i else s)
             )
 
-            
-        if not as_json: return sub 
+
+        if not as_json: return sub
 
 
         def all_or_onbekend(val, map_f=lambda x: x):
             if not val:
                 return lang.unknown
-            elif isinstance(val, str): 
+            elif isinstance(val, str):
                 return map_f(val)
             else: return "; ".join(map(map_f, val))
 
@@ -414,7 +414,7 @@ class CollectionAccessor:
                 return r.fillna("UNKNOWN").attribution.replace("UNKNOWN", lang.unknown) # never NaN or of type list
             elif r.rights == "public domain":
                 return "CC0"
-            else: return "In Copyright" 
+            else: return "In Copyright"
 
 
         reverse_names = CollectionAccessor.reverse_names if self._obj.attrs["reverse_names"]\
@@ -425,15 +425,15 @@ class CollectionAccessor:
 
         order_index.name = "order_index"
         sub = sub.join(order_index)
-        
-        return [{"inventory_number": r.name, 
-                 "title": r.title, 
+
+        return [{"inventory_number": r.name,
+                 "title": r.title,
                  "description": r.description,
                  "designer": all_or_onbekend(r.coiner_label, map_f=reverse_names),
                 "producer": all_or_onbekend(r.maker_label, map_f=reverse_names),
-                 "design_date": CollectionAccessor.human_readable_dates(r.coin_time, 
+                 "design_date": CollectionAccessor.human_readable_dates(r.coin_time,
                                                                         before=lang.before, after=lang.after),
-                 "production_date": CollectionAccessor.human_readable_dates(r.creation_time, 
+                 "production_date": CollectionAccessor.human_readable_dates(r.creation_time,
                                                                             before=lang.before, after=lang.after),
                  "design_place": all_or_onbekend(r.coin_place_label),
                  "production_place": all_or_onbekend(r.creation_place_label),
@@ -448,20 +448,20 @@ class CollectionAccessor:
     # def parse_query(query):
     #     return query
 
-    
+
     def filter(self, text_query, return_df=True, start_time=None, end_time=None, **categorical_values):
         """
-         - All operations preserve order (using boolean series, 
+         - All operations preserve order (using boolean series,
            whose order is the same as that of the original DF, to index), so this
            function may readily be used on on sorted (i.e. scored) data. (NOT TESTED)
         """
 
         # TEXTs
-        
+
         # text_query = self.parse_query(text_query)
-        
+
         text_search_fields = ["objectname_label", "material_label", "maker_label", "coiner_label"]
-        
+
         text_matches = []
         for c in text_search_fields:
             cur_col = self._obj[c].fillna("").apply(lambda ls: " ".join(ls) if isinstance(ls, list) else str(ls))# if c in self.list_cols else self._obj[c]
@@ -470,7 +470,7 @@ class CollectionAccessor:
         text_matches.append(self._obj.index.str.contains(text_query, regex=True))
         text_matches.append(self.get_texts().str.contains(text_query, regex=True))
 
-        text_matches = np.sum(text_matches, axis=0).astype(bool)        
+        text_matches = np.sum(text_matches, axis=0).astype(bool)
         all_matches = [text_matches]
 
         # TIME WINDOW
@@ -478,39 +478,39 @@ class CollectionAccessor:
         # if start_time or end_time:
         #     window_str = (start_time if start_time else "..") + "/" + (end_time if end_time else "..")
         #     window = parse_edtf(window_str)
-        #     time_matches = 
+        #     time_matches =
 
         # CATEGORICAL
-        
+
         # for c, val in categorical_values.items():
         #     # TODO: figure out how to go from labels to URIs (???)
         #     all_matches.append(self._obj[c] == val)
-        
+
         all_matches = np.prod(all_matches, axis=0).astype(bool)
 
-        if not return_df: return pd.Series(all_matches, index=self._obj.index)        
+        if not return_df: return pd.Series(all_matches, index=self._obj.index)
         return self._obj[all_matches]
-    
+
     # def filter(self, text_query, return_df=True, **categorical_values):
 
     #     fields = object_number, material, objectname, maker_label
-        
-    #     if not all(c in self.categorical_cols): 
+
+    #     if not all(c in self.categorical_cols):
     #         raise ValueError(f"some given categories {categorical_values.keys()} not in {self.categorical_cols}!")
 
     #     text_query = self.parse_query(text_query)
     #     text_matches = self.get_texts().str.contains(text_query, regex=True)
-        
+
     #     matches = [text_matches]
     #     for c, val in categorical_values.items():
     #         # TODO: figure out how to go from labels to URIs (???)
     #         matches.append(self._obj[c] == val)
     #     matches = np.prod(matches, axis=0).astype(bool)
 
-    #     if not return_df: return pd.Series(matches, index=df.index)        
+    #     if not return_df: return pd.Series(matches, index=df.index)
     #     return df[matches]
-            
-    
+
+
     # def order(self, scores=None):
     #     if scores is None:
     #         return self._obj.sort_values(by="sort_rank")
@@ -521,12 +521,12 @@ class CollectionAccessor:
 
     #     sorted_index = scores.sort_values().index
     #     return self._obj.loc[sorted_index]
-    
-        
+
+
     def info(self):
-        # open_categories = [c for c in self.categorical_cols 
+        # open_categories = [c for c in self.categorical_cols
         #                      if len(exploded[c].value_counts()) > 20]
-        # closed_categories = [c for c in self.categorical_cols 
+        # closed_categories = [c for c in self.categorical_cols
         #                      if len(exploded[c].value_counts()) < 20]
         info = dict(
             name=self._obj.attrs["name"],
@@ -558,24 +558,24 @@ class CollectionAccessor:
             return s
         b, a = s.split(", ", maxsplit=1)
         return f"{a} {b}"
-    
-    
+
+
     @staticmethod
     def human_readable_dates(s, before, after, ca="ca."):
         if not s:
             return ""
-            
+
         def parse_year(y):
             if y.endswith("~"):
                 return f"{ca} " + y[:-1]
             else: return y
-        
+
         if not "/" in s:
             return parse_year(s)
 
-        
+
         a, b = s.split("/")
-    
+
         if (not a) and (not b):
             return ""
         elif not b:
@@ -584,5 +584,5 @@ class CollectionAccessor:
             return f"{before} " + parse_year(b)
         else:
             return parse_year(a) + " — " + parse_year(b)
-    
+
         raise ValueError(f"time string {y} didn't fit into any known format!")
