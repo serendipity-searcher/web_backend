@@ -392,11 +392,11 @@ class CollectionAccessor:
         sub = self._obj[self.presentation_cols + ["image_path"]].fillna("")
         if object_numbers is not None: sub = sub.loc[object_numbers]
 
-        cutoffs = {"title": 100, "description": 500}
-        for c, i in cutoffs.items():
-            sub[c] = sub[c].apply(
-                lambda s: ((s[:i] + " …") if len(s) > i else s)
-            )
+        # cutoffs = {"title": 100, "description": 500}
+        # for c, i in cutoffs.items():
+        #     sub[c] = sub[c].apply(
+        #         lambda s: ((s[:i] + " …") if len(s) > i else s)
+        #     )
 
 
         if not as_json: return sub

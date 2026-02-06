@@ -48,7 +48,7 @@ def init_MKG():
     sem_searcher = EmbeddingSearcher(sem_embs, name="semantic-searcher")
     
     viz_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/vitmae", loadXD=32)
-    viz_searcher = EmbeddingSearcher(viz_embs, name="visual-searcher")
+    viz_searcher = EmbeddingSearcher(viz_embs, name="VisualSearcher")
 
     s = Search([kg_searcher, sem_searcher, viz_searcher])
     return df, s, concept_search
