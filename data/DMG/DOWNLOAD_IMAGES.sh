@@ -1,6 +1,6 @@
 #!/bin/bash
 
-cd ./src/
+# cd ./src/
 
 # source ~/home2-env/bin/activate
 # PYTHON3_VENV_PATH=$(which python3)
@@ -11,4 +11,4 @@ cd ./src/
 
 # python dump_from_S3bucket.py --save_path "../images_mnt/DMG/" --confirmed
 
-python dump_from_S3bucket.py --confirmed #--save_path "../images/DMG/"
+python src/dump_from_S3bucket.py --confirmed #--save_path "../images/DMG/"

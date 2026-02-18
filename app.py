@@ -57,7 +57,7 @@ def init_MKG():
 
 def init_DMG():
     DMG_DIR = "./data/DMG"
-    image_folder = DMG_DIR+"/images"
+    image_folder = DMG_DIR+"/images/"
     image_handler = ImageHandler("DMG", image_folder=image_folder, keep_prefix=False)
 
     time_stamp, pub_file, priv_file = CollectionAccessor.get_latest_dump(DMG_DIR+"/dumps")
@@ -162,7 +162,7 @@ def available_collections():
     return [dict(id=c_id, name=c.attrs["name"]) for c_id, c in collections.items()]
 
 
-@app.get("/{collection_id}")
+@app.get("/{collection_id}/")
 def collection_info(collection_id):
     cur_coll = get_collection(collection_id)
     return cur_coll.coll.info()

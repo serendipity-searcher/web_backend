@@ -84,7 +84,7 @@ class ImageHandler:
     # def __init__(se
 
 class MKGImageHandler:
-    def __init__(self, image_folder, keep_prefix=True, imploded=False):
+    def __init__(self, image_folder, keep_prefix=True, imploded=False):        
         paths = pd.Series(glob(image_folder+"/*"), name="image_path").fillna("")
         if paths.isna().all() or len(paths) < 1:
             print(f"WARNING: {image_folder} is empty! Is the path correct?")
@@ -108,21 +108,46 @@ class MKGImageHandler:
 
 class DMGImageHandler:
     def __init__(self, image_folder, keep_prefix=True, imploded=True):
-        paths = pd.Series(glob(image_folder+"/*/*"), name="image_path").fillna("")
-        if paths.isna().all() or len(paths) < 1:
+        try:
+            image_info = pd.read_csv(image_folder+"image_info.csv").set_index("object_number")
+            image_info = self.primary_image(image_info)
+            self._obj = image_info
+        except FileNotFoundError:
             print(f"WARNING: {image_folder} is empty! Is the path correct?")
-
-        if not keep_prefix:
-            paths = paths.str.replace(image_folder, "")
+            return
 
 
-        obj_nums = self.object_number_from_path(paths)
-        paths.index = obj_nums
-        if imploded:
-            paths = paths.groupby(paths.index).apply(list)
-        self._obj = paths
+        ### old
+        # paths = pd.Series(glob(image_folder+"/*/*"), name="image_path").fillna("")
+        # if not keep_prefix:
+        #     paths = paths.str.replace(image_folder, "")
+        # obj_nums = self.object_number_from_path(paths)
+        # paths.index = obj_nums
+        # if imploded:
+        #     paths = paths.groupby(paths.index).apply(list)
+        # self._obj = paths
 
 
+        # primary_images = pd.read_csv(image_folder+"primary_images.csv")
+        # primary_images = primary_images.dropna(subset=["objectnummer", "naam beeld(en)"]).set_index("objectnummer")
+        # primary_images = p["naam beeld(en)"].fillna("").str.split(";").apply(lambda ls: ls[0])
+
+        
+    # def is_primary(filename):
+    #     if "$" in filename:
+    #         if "$1" in filename:
+    #             return True
+    #         else: return False
+    #     return True
+
+
+    @staticmethod
+    def primary_image(image_info):
+        # remove duplicate OBJECT NUMBERs
+        return image_info.loc[~image_info.index.duplicated(keep='first'), :]
+
+
+        
     @staticmethod
     def parse_filepath(s):#     folder, file = s.rsplit("/", maxsplit=2)#[1:]
 
@@ -265,8 +290,9 @@ class CollectionAccessor:
 
         if image_handler is not None:
             df = df.join(image_handler._obj, how="left")
+            # cls.image_handler = image_handler            
         else:
-            df["image_path"] = ""
+            df["path"] = ""
 
         assert ("name" in metadata) and ("id_" in metadata) and ("creation_timestamp" in metadata) and ("language" in metadata)
         df.attrs = metadata
@@ -320,7 +346,7 @@ class CollectionAccessor:
         if image_handler is not None:
             df = df.join(image_handler._obj, how="left")
         else:
-            df["image_path"] = ""
+            df["path"] = ""
 
         assert ("name" in metadata) and ("id_" in metadata) and ("creation_timestamp" in metadata) and ("language" in metadata)
         df.attrs = metadata
@@ -389,8 +415,12 @@ class CollectionAccessor:
     def get_presentation_records(self, object_numbers=None, as_json=True, order_index=None):
         lang = self._obj.attrs["lang"]
 
-        sub = self._obj[self.presentation_cols + ["image_path"]].fillna("")
+        image_cols = ["path", "width", "height", "dominant_R", "dominant_G", "dominant_B",
+                      "thumb_path", "thumb_width", "thumb_height"]
+        sub = self._obj[self.presentation_cols+image_cols].fillna("")
+
         if object_numbers is not None: sub = sub.loc[object_numbers]
+        
 
         # cutoffs = {"title": 100, "description": 500}
         # for c, i in cutoffs.items():
@@ -422,10 +452,25 @@ class CollectionAccessor:
 
         if order_index is None: order_index = pd.Series(list(range(len(sub))), index=sub.index)
         assert order_index.index.equals(sub.index)
-
         order_index.name = "order_index"
         sub = sub.join(order_index)
 
+        def get_image(r):
+            if r.path:
+                return {
+                    "path": r.path,
+                    "thumbnail": {
+                      "path": r.thumb_path,
+                      "width": int(r.thumb_width),
+                      "height": int(r.thumb_height),      
+                    },
+                    "width": int(r.width),
+                    "height": int(r.height),
+                    "dominant_RGB": dict(R=int(r.dominant_R), G=int(r.dominant_G), B=int(r.dominant_B))
+                }
+            return []
+
+        
         return [{"inventory_number": r.name,
                  "title": r.title,
                  "description": r.description,
@@ -434,11 +479,12 @@ class CollectionAccessor:
                  "design_date": CollectionAccessor.human_readable_dates(r.coin_time,
                                                                         before=lang.before, after=lang.after),
                  "production_date": CollectionAccessor.human_readable_dates(r.creation_time,
-                                                                            before=lang.before, after=lang.after),
+                                                                            before=lang.before, 
+                                                                            after=lang.after),
                  "design_place": all_or_onbekend(r.coin_place_label),
                  "production_place": all_or_onbekend(r.creation_place_label),
                  "rights_attribution": display_attribution(r),
-                 "image_path": r.image_path if r.image_path else [],
+                 "image": get_image(r), # r.image_path if r.image_path else [],
                  "order_index": r.order_index #int(order_index.loc[r.name])
                 }
                 for i, r in sub.iterrows()]

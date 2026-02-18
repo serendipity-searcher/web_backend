@@ -36,6 +36,7 @@ import sys
 
 # setting path
 sys.path.append(DATA_DIR)
+print(sys.path)
 
 from data import DMGImageHandler
 
@@ -115,35 +116,97 @@ from PIL import Image
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
+from colorthief import ColorThief
 
 
-def resize(save_path, row, new_path): #old_directory_name="images", new_directory_name="images_resized"):
-    def smaller(w, h):
-        fixed_size = 1200
-        r = h/w 
-        if w >= h:
-            return (fixed_size, int(fixed_size*r))
-        else:
-            r = 1/r
-            return (int(fixed_size*r), fixed_size)
 
+
+# def resize(save_path, row, new_path): #old_directory_name="images", new_directory_name="images_resized"):
+#     def smaller(w, h):
+#         fixed_size = 600 # CHANGED; WAS 1200
+#         r = h/w 
+#         if w >= h:
+#             return (fixed_size, int(fixed_size*r))
+#         else:
+#             r = 1/r
+#             return (int(fixed_size*r), fixed_size)
+
+#     with Image.open(save_path+row.raw) as img_handle:
+#         new_size = smaller(*img_handle.size)
+#         img_handle.thumbnail(new_size, Image.Resampling.LANCZOS)
+
+#         # new_path = save_path.replace(old_directory_name, new_directory_name)
+
+#         if not os.path.isdir(new_path+row.prefix):
+#             os.makedirs(new_path+row.prefix)
+
+#         img_handle.save(new_path+row.raw, quality=80) # CHANGED; WAS quality=90
+
+#         return new_size
+
+
+# def resize(image_handle, new_size, new_path):
+#     def resize(w, h):
+#         fixed_size = new_size # CHANGED; WAS 1200
+#         r = h/w 
+#         if w >= h:
+#             return (fixed_size, int(fixed_size*r))
+#         else:
+#             r = 1/r
+#             return (int(fixed_size*r), fixed_size)
+#     new_size = resize(*image_handle.size)
+#     resized_image = image_handle.resize(new_size, Image.Resampling.LANCZOS)
+#     if not os.path.isdir(new_path+row.prefix):
+#         os.makedirs(new_path+row.prefix)
+#     resized_image.save(new_path+row.raw, quality=80)
+#     return new_size
+
+
+def resize(image_handle, max_size):
+    w, h = image_handle.size
+    r = h/w 
+    if w >= h:
+        new_size = (max_size, int(max_size*r))
+    else:
+        r = 1/r
+        new_size = (int(max_size*r), max_size)
+    return image_handle.resize(new_size, Image.Resampling.LANCZOS)
+
+
+def save(row, path, image):
+    if not os.path.isdir(path+row.prefix):
+        os.makedirs(path+row.prefix)
+    image.save(path+row.raw, quality=80)
+    
+
+
+def preprocess_image(save_path, row, thumb_path):
+    color_thief = ColorThief(save_path+row.raw)
+    dominant_colour = color_thief.get_color(quality=30)
+    dominant_colour = dict(zip(("dominant_R","dominant_G", "dominant_B"), dominant_colour))
+    
     with Image.open(save_path+row.raw) as img_handle:
-        new_size = smaller(*img_handle.size)
-        img_handle.thumbnail(new_size, Image.Resampling.LANCZOS)
-
-        # new_path = save_path.replace(old_directory_name, new_directory_name)
-
-        if not os.path.isdir(new_path+row.prefix):
-            os.makedirs(new_path+row.prefix)
-
-        img_handle.save(new_path+row.raw, quality=90)
+        orig_width, orig_height = img_handle.size
         
+        resized_image = resize(img_handle, 1200)
+        new_width, new_height = resized_image.size
+        resized_image.save(save_path+row.raw, quality=80)
+
+        thumb = resize(img_handle, 600)
+        thumb_width, thumb_height = thumb.size
+        save(row, thumb_path, thumb)
+
+        paths = dict(object_number=row.object_number, filename=row.raw, path=save_path+row.raw, thumb_path=thumb_path+row.raw)
+        return dict(width=new_width, height=new_height,
+                    thumb_width=thumb_width, thumb_height=thumb_height) | paths | dominant_colour
+
+
 
 if __name__ == "__main__":
     auto_confirm = False
     limit = None
     save_folder = "images"
-    save_path = DATA_DIR + f"/{save_folder}/"
+    save_path = f"./{save_folder}/"
     delete_original = False
     
     import argparse
@@ -171,26 +234,42 @@ if __name__ == "__main__":
     
     sizes = get_filesizes()
 
-    filenames.to_csv(save_path + "filenames.csv", index=False)
-    sizes.to_csv(save_path + "sizes.csv")
+    # filenames.to_csv(save_path + "filenames.csv", index=False)
+    # sizes.to_csv(save_path + "sizes.csv")
     
     
     to_confirm = f"About to download {readable_size(sizes.sum())}, {len(filenames)} files... (y/n)?"
     
-    if not auto_confirm or input(to_confirm).lower().startswith("y"):
+    if not (auto_confirm or input(to_confirm).lower().startswith("y")):
         exit()
 
+
+    ### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
+    k = 50
+    filenames = filenames.iloc[:k]
+
+    print("\t(1 of 2) downloading images")
     def download_to_path(row, redownload=False):
         return download(save_path, row, redownload=redownload)
+    filenames.iloc[:k].progress_apply(download_to_path, axis=1)
+
+
+
+
+    print("\t(2 of 2) preprocessing images")
+    thumbnails_path = save_path.replace(save_folder, "thumbnails")
+    def preprocess_image_to_path(row):
+        return preprocess_image(save_path, row, thumb_path=thumbnails_path)
+
+    images_info = filenames.progress_apply(preprocess_image_to_path, axis=1)
+    images_info = pd.DataFrame.from_records(images_info)
+    images_info.to_csv(save_path+"image_info.csv", index=False)
+
     
-    filenames.progress_apply(download_to_path, axis=1)
-
-
-    resized_path = save_path.replace(save_folder, "images_resized")
-    def resize_to_path(row):
-        resize(save_path, row, new_path=resized_path)
-
-    filenames.progress_apply(resize_to_path, axis=1)
+    # resized_path = save_path.replace(save_folder, "images_resized")
+    # def resize_to_path(row):
+    #     return resize(save_path, row, new_path=resized_path)
+    # thumb_sizes = filenames.progress_apply(resize_to_path, axis=1)
 
 
     import shutil
