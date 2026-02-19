@@ -1,5 +1,6 @@
 beautifulsoup4
 boto3==1.36.9
+colorthief==0.2.1
 edtf==5.0.0
 fastapi==0.115.12
 imageio==2.35.1
