@@ -107,14 +107,16 @@ class MKGImageHandler:
 
 
 class DMGImageHandler:
-    def __init__(self, image_folder, keep_prefix=True, imploded=True):
+    def __new__(cls, image_folder, keep_prefix=True, imploded=True):
         try:
             image_info = pd.read_csv(image_folder+"image_info.csv").set_index("object_number")
-            image_info = self.primary_image(image_info)
+            image_info = cls.primary_image(image_info)
+            self = super().__new__(cls)
             self._obj = image_info
+            return self
         except FileNotFoundError:
             print(f"WARNING: {image_folder} is empty! Is the path correct?")
-            return
+            return None
 
 
         ### old

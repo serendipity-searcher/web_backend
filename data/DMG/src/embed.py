@@ -8,13 +8,13 @@ import os
 import sys
 sys.path.append("..")
 
-from data.data import CollectionAccessor, EmbeddingSpaceAccessor, ImageHandler
+from data import CollectionAccessor, EmbeddingSpaceAccessor, ImageHandler
 
 from sentence_transformers import SentenceTransformer, util
 
 
 
-def embed_texts(texts, model_name, chunk_size=512):
+def embed_texts(texts, model_name, chunk_size=512, index_name=""):
     todo = np.array_split(texts, int(len(texts)/chunk_size))
 
     # l = len(str(len(todo)))
@@ -24,13 +24,19 @@ def embed_texts(texts, model_name, chunk_size=512):
     model = SentenceTransformer(model_name)
     
     embs = []
-    for i, chunk in tqdm(enumerate(tqdm(todo))):
-        cur_embs = model.encode(chunk)
+    pbar = tqdm(texts)
+    i = 0
+    while not texts.iloc[i:i+chunk_size].empty:
+        chunk = texts.iloc[i:i+chunk_size]
+    # for i, chunk in enumerate(tqdm(todo)):
+        cur_embs = model.encode(list(chunk))
     
         cur_embs = pd.DataFrame(cur_embs, index=chunk.index)
-        cur_embs.index.name = dmg.index.name
+        cur_embs.index.name = chunk.index.name
     
         embs.append(cur_embs)
+        i += chunk_size
+        pbar.update(chunk_size)
     
     embs = pd.concat(embs)
     return embs
@@ -41,7 +47,7 @@ def embed_texts(texts, model_name, chunk_size=512):
 # import os.path
 # import csv
 
-import imageio.v3 as iio
+# import imageio.v3 as iio
 from PIL import Image
 from PIL import ImageFile
 ImageFile.LOAD_TRUNCATED_IMAGES = True
@@ -109,7 +115,7 @@ def init_DMG(images_path):
 
     
     dmg_meta = dict(name="Design Museum Gent (public & private)", id_="DMG_"+time_stamp,
-                creation_timestamp=time_stamp)
+                creation_timestamp=time_stamp, language="nl")
     df = CollectionAccessor.get_DMG(pub_path=pub_file, #get_latest("./data/dumps", contains="public"),
                                      priv_path=priv_file, #get_latest("./data/dumps", contains="private"),
                                      rights_path="./rights.csv",
@@ -143,6 +149,7 @@ if __name__ == "__main__":
         
         if not os.path.isdir(f"{OUT_DIR}/{model_name}"):
             os.makedirs(f"{OUT_DIR}/{model_name}")
+            
         text_embs = embed_texts(texts, model_name)
         text_embs.to_csv(f"{OUT_DIR}/{model_name}/embeddings.csv", index=True)
 

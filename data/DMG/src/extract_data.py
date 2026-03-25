@@ -34,7 +34,9 @@ def implode(df, on="object_number", as_string=True, sep="&semi;"):
     def _implode(subdf):
         return [compact(subdf[col].dropna(), as_string=as_string, sep=sep) for col in subdf.columns]
     rows = df.groupby(on).progress_apply(_implode)
-    return pd.DataFrame(rows.tolist(), index=rows.index, columns=df.columns)
+    imploded = pd.DataFrame(rows.tolist(), index=rows.index).reset_index()
+    imploded.columns = df.columns
+    return imploded
 
 
 
@@ -126,7 +128,7 @@ if __name__ == "__main__":
     full["is_public"] = bool(args.is_public)
     # full.to_csv(save_name, index=False, quoting=csv.QUOTE_ALL, quotechar='"')
 
-
+    
     imploded = implode(full)
     
     # # this_minute = dt.datetime.today().strftime("%Y-%m-%dT%H-%M")
