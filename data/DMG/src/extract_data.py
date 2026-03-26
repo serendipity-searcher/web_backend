@@ -32,9 +32,13 @@ def compact(series, keep_repetitions=False, as_string=True, sep="&semi;"):
 
 def implode(df, on="object_number", as_string=True, sep="&semi;"):
     def _implode(subdf):
-        return [compact(subdf[col].dropna(), as_string=as_string, sep=sep) for col in subdf.columns if not col == on]
-    rows = df.groupby(on).progress_apply(_implode)
-    imploded = pd.DataFrame(rows.tolist(), index=rows.index).reset_index()
+        return [compact(subdf[col].dropna(), as_string=as_string, sep=sep) for col in subdf.columns]# if not col == on]
+    # rows = df.groupby(on).apply(_implode)
+    rows = [_implode(sub) for obj_num, sub in tqdm(df.groupby(on, as_index=False))]
+    imploded = pd.DataFrame(rows)#, index=rows.index).reset_index()
+    # import pickle
+    # with open("DEBUG.pkl", "wb") as handle:
+    #     pickle.dump((imploded, df), handle)
     imploded.columns = df.columns
     return imploded
 
