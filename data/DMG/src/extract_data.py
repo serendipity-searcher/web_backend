@@ -32,7 +32,7 @@ def compact(series, keep_repetitions=False, as_string=True, sep="&semi;"):
 
 def implode(df, on="object_number", as_string=True, sep="&semi;"):
     def _implode(subdf):
-        return [compact(subdf[col].dropna(), as_string=as_string, sep=sep) for col in subdf.columns]
+        return [compact(subdf[col].dropna(), as_string=as_string, sep=sep) for col in subdf.columns if not col == on]
     rows = df.groupby(on).progress_apply(_implode)
     imploded = pd.DataFrame(rows.tolist(), index=rows.index).reset_index()
     imploded.columns = df.columns
@@ -119,9 +119,9 @@ if __name__ == "__main__":
     # today_interval = "/"+dt.datetime.today().strftime("%Y-%m-%d")
     # full[time_cols] = full[time_cols].replace({"/": today_interval, "..": today_interval}).fillna(today_interval)
     time_cols = ['coin_time', 'creation_time', 'acquisition_time']
-    print(f"WTF: {full[time_cols]}")
+    # print(f"WTF: {full[time_cols]}")
     full[time_cols] = full[time_cols].replace({"/": None, "..": None})#.fillna("")
-    print(f"WTF 2: {full[time_cols]}")
+    # print(f"WTF 2: {full[time_cols]}")
     # print(f"WTF 2: {full[time_cols].replace({"/": None, "..": None})}")
 
     

@@ -8,7 +8,7 @@ lxml
 matplotlib==3.10.3
 networkx==3.3
 numpy<=2.5.1
-pandas==2.2.3
+pandas # ==2.2.3
 pathvalidate==3.2.3
 oxrdflib
 rdflib==7.1.4
