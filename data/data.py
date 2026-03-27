@@ -263,7 +263,7 @@ class CollectionAccessor:
             if not date in cls.parsed_dates_memo:
                 cls.parsed_dates_memo[date] = parse_edtf(date)
             return cls.parsed_dates_memo[date]
-        return series.progress_apply(memoised)
+        return series.apply(memoised)
 
     @staticmethod
     def get_latest_dump(directory):
