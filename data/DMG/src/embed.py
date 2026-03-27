@@ -106,7 +106,7 @@ def embed_images(out_dir, paths, model_name, chunk_size=64):
 
 def init_DMG(images_path):
     if images_path is not None:
-        image_handler = ImageHandler(image_folder=images_path, keep_prefix=True)
+        image_handler = ImageHandler("DMG",image_folder=images_path, keep_prefix=True)
     else:
         image_handler = None
 
