@@ -44,15 +44,15 @@ echo "INSTALLING SEARCHER FOR DMG DONE!"
 
 
 
-echo "INSTALLING SEARCHER FOR MKG..."
+# echo "INSTALLING SEARCHER FOR MKG..."
 
-cd $datadir
+# cd $datadir
 
-cd ./MKG
+# cd ./MKG
 
-./INSTALL_MKG.sh
+# ./INSTALL_MKG.sh
 
-echo "INSTALLING SEARCHER FOR MKG DONE!"
+# echo "INSTALLING SEARCHER FOR MKG DONE!"
 
 
 rm -rf ./backend_venv
