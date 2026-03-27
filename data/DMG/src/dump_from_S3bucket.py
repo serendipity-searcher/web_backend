@@ -246,12 +246,12 @@ if __name__ == "__main__":
 
     ### !!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!
     k = 50
-    filenames = filenames.iloc[:k]
+    #filenames = filenames.iloc[:k]
 
     print("\t(1 of 2) downloading images")
     def download_to_path(row, redownload=False):
         return download(save_path, row, redownload=redownload)
-    filenames.iloc[:k].progress_apply(download_to_path, axis=1)
+    filenames.apply(download_to_path, axis=1)
 
 
 
