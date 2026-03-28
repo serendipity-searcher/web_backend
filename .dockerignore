@@ -1,6 +1,6 @@
 # Data files
-data/images/
-data/dumps/
+data/*/images/
+data/*/dumps/
 
 # Python cache files
 __pycache__/
