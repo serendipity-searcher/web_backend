@@ -1,17 +1,17 @@
-from glob import glob
 import os
+from glob import glob
 
 import numpy as np
 import pandas as pd
 from tqdm import tqdm
+
 tqdm.pandas()
 
+import datetime as dt
 import re
 
-import datetime as dt
-from edtf import parse_edtf
-
 import umap.umap_ as umap
+from edtf import parse_edtf
 
 # def get_latest(directory, contains=""):
 #     files = [f for f in sorted(glob(directory+"/*")) if contains in f]
@@ -84,7 +84,7 @@ class ImageHandler:
     # def __init__(se
 
 class MKGImageHandler:
-    def __init__(self, image_folder, keep_prefix=True, imploded=False):        
+    def __init__(self, image_folder, keep_prefix=True, imploded=False):
         paths = pd.Series(glob(image_folder+"/*"), name="image_path").fillna("")
         if paths.isna().all() or len(paths) < 1:
             print(f"WARNING: {image_folder} is empty! Is the path correct?")
@@ -111,6 +111,9 @@ class DMGImageHandler:
         try:
             image_info = pd.read_csv(image_folder+"image_info.csv").set_index("object_number")
             image_info = cls.primary_image(image_info)
+            for col in ("path", "thumb_path"):
+                if col in image_info.columns:
+                    image_info[col] = image_info[col].str.removeprefix("./")
             self = super().__new__(cls)
             self._obj = image_info
             return self
@@ -134,7 +137,7 @@ class DMGImageHandler:
         # primary_images = primary_images.dropna(subset=["objectnummer", "naam beeld(en)"]).set_index("objectnummer")
         # primary_images = p["naam beeld(en)"].fillna("").str.split(";").apply(lambda ls: ls[0])
 
-        
+
     # def is_primary(filename):
     #     if "$" in filename:
     #         if "$1" in filename:
@@ -149,7 +152,7 @@ class DMGImageHandler:
         return image_info.loc[~image_info.index.duplicated(keep='first'), :]
 
 
-        
+
     @staticmethod
     def parse_filepath(s):#     folder, file = s.rsplit("/", maxsplit=2)#[1:]
 
@@ -260,7 +263,7 @@ class CollectionAccessor:
     @classmethod
     def parse_edtf_memoised(cls, series):
         def memoised(date):
-            if not date in cls.parsed_dates_memo:
+            if date not in cls.parsed_dates_memo:
                 cls.parsed_dates_memo[date] = parse_edtf(date)
             return cls.parsed_dates_memo[date]
         return series.apply(memoised)
@@ -292,7 +295,7 @@ class CollectionAccessor:
 
         if image_handler is not None:
             df = df.join(image_handler._obj, how="left")
-            # cls.image_handler = image_handler            
+            # cls.image_handler = image_handler
         else:
             df["path"] = ""
 
@@ -422,7 +425,7 @@ class CollectionAccessor:
         sub = self._obj[self.presentation_cols+image_cols].fillna("")
 
         if object_numbers is not None: sub = sub.loc[object_numbers]
-        
+
 
         # cutoffs = {"title": 100, "description": 500}
         # for c, i in cutoffs.items():
@@ -460,11 +463,11 @@ class CollectionAccessor:
         def get_image(r):
             if r.path:
                 return {
-                    "path": r.path,
+                    "path": "/DMG/" + r.path,
                     "thumbnail": {
-                      "path": r.thumb_path,
+                      "path": "/DMG/" + r.thumb_path,
                       "width": int(r.thumb_width),
-                      "height": int(r.thumb_height),      
+                      "height": int(r.thumb_height),
                     },
                     "width": int(r.width),
                     "height": int(r.height),
@@ -472,7 +475,7 @@ class CollectionAccessor:
                 }
             return []
 
-        
+
         return [{"inventory_number": r.name,
                  "title": r.title,
                  "description": r.description,
@@ -481,7 +484,7 @@ class CollectionAccessor:
                  "design_date": CollectionAccessor.human_readable_dates(r.coin_time,
                                                                         before=lang.before, after=lang.after),
                  "production_date": CollectionAccessor.human_readable_dates(r.creation_time,
-                                                                            before=lang.before, 
+                                                                            before=lang.before,
                                                                             after=lang.after),
                  "design_place": all_or_onbekend(r.coin_place_label),
                  "production_place": all_or_onbekend(r.creation_place_label),
@@ -491,7 +494,7 @@ class CollectionAccessor:
                 }
                 for i, r in sub.iterrows()]
 
-    
+
     # @staticmethod
     # def parse_query(query):
     #     return query
@@ -602,7 +605,7 @@ class CollectionAccessor:
             return " & ".join([cls.reverse_names(x) for x in s.split("&")])
         s = s.strip()
         if not s: return ""
-        if not ", " in s:
+        if ", " not in s:
             return s
         b, a = s.split(", ", maxsplit=1)
         return f"{a} {b}"
@@ -618,7 +621,7 @@ class CollectionAccessor:
                 return f"{ca} " + y[:-1]
             else: return y
 
-        if not "/" in s:
+        if "/" not in s:
             return parse_year(s)
 
 
