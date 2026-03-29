@@ -473,7 +473,7 @@ class CollectionAccessor:
                     "height": int(r.height),
                     "dominant_RGB": dict(R=int(r.dominant_R), G=int(r.dominant_G), B=int(r.dominant_B))
                 }
-            return []
+            return None
 
 
         return [{"inventory_number": r.name,
