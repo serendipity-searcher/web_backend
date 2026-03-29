@@ -2,15 +2,15 @@
 
 # connecting and dumping the entire collection image data
 
-## Connection 
+## Connection
 
  # - bucket name: dmg-images-searcher
  # - region: eu-west-2
  # - access key & super secret key: SEE OLIVIER's EMAIL FROM 23.01.2025
 
 
- 
- 
+
+
 
 
 # Observations
@@ -38,14 +38,14 @@ import sys
 sys.path.append(DATA_DIR)
 print(sys.path)
 
-from data import DMGImageHandler
-
-from tqdm import tqdm
-
-from pathvalidate import sanitize_filename
 import os
 
 import pandas as pd
+from pathvalidate import sanitize_filename
+from tqdm import tqdm
+
+from data import DMGImageHandler
+
 tqdm.pandas()
 
 import boto3
@@ -61,7 +61,7 @@ bucket = s3.Bucket("dmg-images-searcher")
 #     except ValueError:
 #         obj_rendition = file
 #         extension = None
-        
+
 #     try:
 #         obj_num, rendition_ind =  obj_rendition.rsplit("$", maxsplit=1)
 #     except ValueError:
@@ -75,9 +75,19 @@ bucket = s3.Bucket("dmg-images-searcher")
 #     return parse_filepath(s)[2]
 
 
+IMAGE_EXTENSIONS = {".jpg", ".jpeg", ".png", ".gif", ".tif", ".tiff", ".bmp", ".webp"}
+
 def validate_filenames(filenames):
     files = [(f,)+os.path.split(f) for f in filenames]
     files = pd.DataFrame(files, columns=["raw", "prefix", "filename"])
+
+    # filter out non-image files
+    is_image = files.filename.apply(lambda f: os.path.splitext(f)[1].lower() in IMAGE_EXTENSIONS)
+    skipped = files[~is_image]
+    if len(skipped):
+        print(f"Skipping {len(skipped)} non-image file(s): {skipped.filename.tolist()}")
+    files = files[is_image].reset_index(drop=True)
+
     # files["object_number"] = files.raw.apply(get_object_number)
     obj_nums = DMGImageHandler.object_number_from_path("./" + files.raw)
 
@@ -94,7 +104,7 @@ def get_filesizes():
     sizes = pd.Series([s[1] for s in sizes], index=[s[0] for s in sizes], name="filesize")
     sizes.index.name = "filename"
     return sizes
-    
+
 b2mb = lambda x: x/(1024**2)
 b2gb = lambda x: b2mb(x)/1024
 readable_size = lambda x: f"{b2mb(x):.2f} MB" if (b2mb(x) < 1000) else f"{b2gb(x):.2f} GB"
@@ -111,20 +121,16 @@ def download(save_path, row, redownload=False):
         print(f"{prefix+row.raw} exists! skipping...")
 
 
-import os
-from PIL import Image
-from PIL import ImageFile
+from PIL import Image, ImageFile
+
 ImageFile.LOAD_TRUNCATED_IMAGES = True
 
 from colorthief import ColorThief
 
-
-
-
 # def resize(save_path, row, new_path): #old_directory_name="images", new_directory_name="images_resized"):
 #     def smaller(w, h):
 #         fixed_size = 600 # CHANGED; WAS 1200
-#         r = h/w 
+#         r = h/w
 #         if w >= h:
 #             return (fixed_size, int(fixed_size*r))
 #         else:
@@ -148,7 +154,7 @@ from colorthief import ColorThief
 # def resize(image_handle, new_size, new_path):
 #     def resize(w, h):
 #         fixed_size = new_size # CHANGED; WAS 1200
-#         r = h/w 
+#         r = h/w
 #         if w >= h:
 #             return (fixed_size, int(fixed_size*r))
 #         else:
@@ -164,7 +170,7 @@ from colorthief import ColorThief
 
 def resize(image_handle, max_size):
     w, h = image_handle.size
-    r = h/w 
+    r = h/w
     if w >= h:
         new_size = (max_size, int(max_size*r))
     else:
@@ -177,20 +183,26 @@ def save(row, path, image):
     if not os.path.isdir(path+row.prefix):
         os.makedirs(path+row.prefix)
     image.save(path+row.raw, quality=80)
-    
+
 
 
 def preprocess_image(save_path, row, thumb_path):
     color_thief = ColorThief(save_path+row.raw)
-    dominant_colour = color_thief.get_color(quality=30)
+    try:
+        dominant_colour = color_thief.get_color(quality=30)
+    except Exception:
+        dominant_colour = (0, 0, 0)
     dominant_colour = dict(zip(("dominant_R","dominant_G", "dominant_B"), dominant_colour))
-    
+
     with Image.open(save_path+row.raw) as img_handle:
         orig_width, orig_height = img_handle.size
-        
-        resized_image = resize(img_handle, 1200)
-        new_width, new_height = resized_image.size
-        resized_image.save(save_path+row.raw, quality=80)
+
+        if max(orig_width, orig_height) <= 1200:
+            new_width, new_height = orig_width, orig_height
+        else:
+            resized_image = resize(img_handle, 1200)
+            new_width, new_height = resized_image.size
+            resized_image.save(save_path+row.raw, quality=80)
 
         thumb = resize(img_handle, 600)
         thumb_width, thumb_height = thumb.size
@@ -208,7 +220,7 @@ if __name__ == "__main__":
     save_folder = "images"
     save_path = f"./{save_folder}/"
     delete_original = False
-    
+
     import argparse
     parser = argparse.ArgumentParser()
     parser.add_argument("--save_path", help="path for saving downloaded images")
@@ -219,7 +231,7 @@ if __name__ == "__main__":
 
     if args.save_path:
         save_path = args.save_path
-           
+
     if args.limit:
         limit = args.limit
 
@@ -228,18 +240,18 @@ if __name__ == "__main__":
 
     if args.delete_original:
         delete_original = True
-        
+
     filenames_raw = [file.key for file in tqdm(bucket.objects.all(), desc="enumerating file names...")][:limit]
     filenames = validate_filenames(filenames_raw)
-    
+
     sizes = get_filesizes()
 
     # filenames.to_csv(save_path + "filenames.csv", index=False)
     # sizes.to_csv(save_path + "sizes.csv")
-    
-    
+
+
     to_confirm = f"About to download {readable_size(sizes.sum())}, {len(filenames)} files... (y/n)?"
-    
+
     if not (auto_confirm or input(to_confirm).lower().startswith("y")):
         exit()
 
@@ -259,23 +271,26 @@ if __name__ == "__main__":
     print("\t(2 of 2) preprocessing images")
     thumbnails_path = save_path.replace(save_folder, "thumbnails")
     def preprocess_image_to_path(row):
-        return preprocess_image(save_path, row, thumb_path=thumbnails_path)
+        try:
+            return preprocess_image(save_path, row, thumb_path=thumbnails_path)
+        except Exception as e:
+            print(f"Skipping {row.raw}: {e}")
+            return None
 
     images_info = filenames.progress_apply(preprocess_image_to_path, axis=1)
-    images_info = pd.DataFrame.from_records(images_info)
+    images_info = pd.DataFrame.from_records(images_info.drop())
     images_info.to_csv(save_path+"image_info.csv", index=False)
 
-    
+
     # resized_path = save_path.replace(save_folder, "images_resized")
     # def resize_to_path(row):
     #     return resize(save_path, row, new_path=resized_path)
     # thumb_sizes = filenames.progress_apply(resize_to_path, axis=1)
 
 
-    import shutil
     import os
     if delete_original:
         # shutil.rmtree(save_path)
         os.rename(resized_path, save_path) # this overwrites the original download directory (by performing a mv)
 
-    
+
