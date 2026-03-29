@@ -278,7 +278,7 @@ if __name__ == "__main__":
             return None
 
     images_info = filenames.progress_apply(preprocess_image_to_path, axis=1)
-    images_info = pd.DataFrame.from_records(images_info.drop())
+    images_info = pd.DataFrame.from_records(images_info.dropna())
     images_info.to_csv(save_path+"image_info.csv", index=False)
 
 
