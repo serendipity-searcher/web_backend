@@ -166,7 +166,7 @@ if __name__ == "__main__":
 
         # paths = dmg.image_path.fillna([])
         # paths = dmg.image_path.apply(lambda ls: ls[0])
-        paths = dmg.image_path.fillna(False).apply(lambda ls: (ls[0] if ls else None))
+        paths = dmg.path.fillna(False).apply(lambda p: (p if p else None))
         # paths = dmg.image_path
         
         img_embs = embed_images(OUT_DIR, paths, model_name, chunk_size=32)
