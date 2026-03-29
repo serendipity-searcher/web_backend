@@ -208,7 +208,8 @@ def preprocess_image(save_path, row, thumb_path):
         thumb_width, thumb_height = thumb.size
         save(row, thumb_path, thumb)
 
-        paths = dict(object_number=row.object_number, filename=row.raw, path=save_path+row.raw, thumb_path=thumb_path+row.raw)
+        paths = dict(object_number=row.object_number, filename=row.raw,
+                     path=save_path+row.raw, thumb_path=thumb_path+row.raw)
         return dict(width=new_width, height=new_height,
                     thumb_width=thumb_width, thumb_height=thumb_height) | paths | dominant_colour
 
@@ -269,7 +270,7 @@ if __name__ == "__main__":
 
 
     print("\t(2 of 2) preprocessing images")
-    thumbnails_path = save_path.replace(save_folder, "thumbnails")
+    thumbnails_path = os.path.join(os.path.dirname(save_path.rstrip("/")), "thumbnails") + "/"
     def preprocess_image_to_path(row):
         try:
             return preprocess_image(save_path, row, thumb_path=thumbnails_path)
