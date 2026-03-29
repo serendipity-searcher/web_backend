@@ -1,6 +1,7 @@
 FROM ghcr.io/astral-sh/uv:python3.12-trixie
 
 ENV PYTHONUNBUFFERED=1
+ENV RUN_INSTALL=true
 
 RUN apt-get update && apt-get install -y \
     curl \
@@ -33,4 +34,4 @@ VOLUME ["/app/data"]
 
 EXPOSE 8080
 
-CMD ["sh", "-c", "/app/INSTALL.sh && cron && /app/backend_venv/bin/uvicorn app:app --host 0.0.0.0 --port 8080"]
+CMD ["sh", "-c", "if [ \"$RUN_INSTALL\" = \"true\" ]; then /app/INSTALL.sh; fi && cron && /app/backend_venv/bin/uvicorn app:app --host 0.0.0.0 --port 8080"]
