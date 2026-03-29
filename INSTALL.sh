@@ -1,10 +1,5 @@
 #!/bin/bash
-
-python -m venv "backend_venv"
-
 source backend_venv/bin/activate
-
-pip install -r requirements.txt
 
 cd ./data
 
@@ -31,7 +26,7 @@ echo "(2 of 3) EXTRACTING & PROCESSING DATA... (this takes a few minutes)"
 
 echo "(3 of 3) DOWNLOADING IMAGES... (this takes a few hours)"
 echo "NEED TO INSTALL AND SET UP AWS CLI"
-echo "BUCKET DETAILS: 
+echo "BUCKET DETAILS:
     bucket name: dmg-images-searcher
     region: eu-west-2"
 echo "see https://boto3.amazonaws.com/v1/documentation/api/latest/guide/quickstart.html#configuration"
@@ -53,7 +48,4 @@ echo "INSTALLING SEARCHER FOR DMG DONE!"
 # ./INSTALL_MKG.sh
 
 # echo "INSTALLING SEARCHER FOR MKG DONE!"
-
-
-rm -rf ./backend_venv
 
