@@ -120,6 +120,7 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.mount("/DMG/images", StaticFiles(directory="data/DMG/images"), name="static_DMG")
+app.mount("/DMG/thumbnails", StaticFiles(directory="data/DMG/thumbnails"), name="static_DMG_thumbnails")
 # app.mount("/MKG/images", StaticFiles(directory="data/MKG/images"), name="static_DMG")
 
 app.add_middleware(
