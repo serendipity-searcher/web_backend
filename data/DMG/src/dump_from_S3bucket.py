@@ -204,9 +204,14 @@ def preprocess_image(save_path, row, thumb_path):
             new_width, new_height = resized_image.size
             resized_image.save(save_path+row.raw, quality=80)
 
-        thumb = resize(img_handle, 600)
-        thumb_width, thumb_height = thumb.size
-        save(row, thumb_path, thumb)
+        thumb_full_path = thumb_path + row.raw
+        if os.path.exists(thumb_full_path):
+            with Image.open(thumb_full_path) as existing_thumb:
+                thumb_width, thumb_height = existing_thumb.size
+        else:
+            thumb = resize(img_handle, 600)
+            thumb_width, thumb_height = thumb.size
+            save(row, thumb_path, thumb)
 
         paths = dict(object_number=row.object_number, filename=row.raw,
                      path=save_path+row.raw, thumb_path=thumb_path+row.raw)
