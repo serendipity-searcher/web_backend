@@ -4,6 +4,8 @@
 .DS_Store
 **/generated_data/
 **/dumps/*
+**/thumbnails/*
+
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
