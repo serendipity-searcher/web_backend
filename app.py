@@ -166,6 +166,7 @@ def available_collections():
 
 
 @app.get("/favicon.ico", include_in_schema=False)
+@app.get("/favicon.ico/", include_in_schema=False)
 def favicon():
     from fastapi.responses import Response
     return Response(status_code=204)
