@@ -5,7 +5,7 @@
 **/generated_data/
 **/dumps/
 **/thumbnails/
-
+**/logs/
 
 # Byte-compiled / optimized / DLL files
 __pycache__/
