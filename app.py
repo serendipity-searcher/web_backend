@@ -163,7 +163,7 @@ def available_collections():
     return [dict(id=c_id, name=c.attrs["name"]) for c_id, c in collections.items()]
 
 
-@app.get("/favicon.ico")
+@app.get("/favicon.ico", include_in_schema=False)
 def favicon():
     from fastapi.responses import Response
     return Response(status_code=204)
