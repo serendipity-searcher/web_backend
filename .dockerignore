@@ -3,6 +3,14 @@ data/*/images/
 data/*/dumps/
 data/*/thumbnails/
 data/*/generated_data/
+logs/
+dev/
+
+data/dev_data.ipynb
+data/visualisations.ipynb
+
+# MKG
+data/MKG/
 
 # Python cache files
 __pycache__/
