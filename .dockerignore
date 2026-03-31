@@ -1,6 +1,8 @@
 # Data files
 data/*/images/
 data/*/dumps/
+data/*/thumbnails/
+data/*/generated_data/
 
 # Python cache files
 __pycache__/

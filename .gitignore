@@ -3,8 +3,8 @@
 **/images/
 .DS_Store
 **/generated_data/
-**/dumps/*
-**/thumbnails/*
+**/dumps/
+**/thumbnails/
 
 
 # Byte-compiled / optimized / DLL files
