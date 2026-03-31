@@ -145,6 +145,11 @@ def parse_id_list(id_list_str):
 
 
 
+@app.get("/", include_in_schema=False)
+def root():
+    return {"message": "OK"}
+
+
 @app.get("/moon")
 def get_moon(ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"): #lat_degrees=51.05, long_degrees=3.71): #location of DMG
     dt = datetime.fromisoformat(ISO_8601_datetime) if ISO_8601_datetime else datetime.now()
