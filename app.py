@@ -138,10 +138,7 @@ def get_collection(collection_id):
     return collections[collection_id]
 
 def parse_id_list(id_list_str):
-    try:
-        return list(map(str.strip, id_list_str.split(",")))
-    except ValueError:
-        raise s
+    return list(map(str.strip, id_list_str.split(",")))
 
 
 
