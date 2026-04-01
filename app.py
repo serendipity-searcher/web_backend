@@ -4,6 +4,7 @@ from datetime import datetime
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
+from starlette.middleware.base import BaseHTTPMiddleware
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -119,16 +120,24 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-app.mount("/DMG/images", StaticFiles(directory="data/DMG/images"), name="static_DMG")
-app.mount("/DMG/thumbnails", StaticFiles(directory="data/DMG/thumbnails"), name="static_DMG_thumbnails")
-# app.mount("/MKG/images", StaticFiles(directory="data/MKG/images"), name="static_DMG")
+class VaryOriginMiddleware(BaseHTTPMiddleware):
+    async def dispatch(self, request, call_next):
+        response = await call_next(request)
+        response.headers["Vary"] = "Origin"
+        return response
 
+
+app.add_middleware(VaryOriginMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
     allow_methods=["*"],
     allow_headers=["*"],
 )
+
+app.mount("/DMG/images", StaticFiles(directory="data/DMG/images"), name="static_DMG")
+app.mount("/DMG/thumbnails", StaticFiles(directory="data/DMG/thumbnails"), name="static_DMG_thumbnails")
+# app.mount("/MKG/images", StaticFiles(directory="data/MKG/images"), name="static_DMG")
 
 # HELPERS
 def get_collection(collection_id):
