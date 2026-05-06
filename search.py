@@ -56,6 +56,9 @@ class Search:
             if len(searcher_ids) < 1:
                 raise ValueError("Searching with no searcher (aka model) not defined! (Implement this logic externally.)")
             else:
+                for s_id in searcher_ids:
+                    if len([s for s in self.searchers if s.id == s_id]) < 1:
+                        raise ValueError(f"{searcher_ids=}, {[s.id for s in self.searchers]}")
                 cur_searchers = [s for s in self.searchers for s_id in searcher_ids if s.id == s_id]
         else:
             cur_searchers = self.searchers
@@ -160,6 +163,7 @@ class GraphSearcher(Searcher):
     def iter_values(r):
         for v in r:
             if isinstance(v, list): yield from v
+            elif isinstance(v, str): yield from v.split("&semi;")
             elif v: yield v
             else: pass
     
