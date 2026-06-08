@@ -65,9 +65,11 @@ class Search:
             
         searcher_scores = [s(recs) for s in cur_searchers]# self.searchers]
         searcher_scores = pd.DataFrame({s.name: s for s in searcher_scores})
-        # searcher_scores.loc[recs.index] = 0.
         
-        merged_scores = self.merge_scores(searcher_scores)        
+        merged_scores = self.merge_scores(searcher_scores)
+        
+        # merged_scores.loc[recs.index] = 1.
+
 
         self.cache_search(recs, searcher_ids, merged_scores)
         
@@ -133,11 +135,11 @@ class Searcher:
             self.id = name
             Searcher.known_names[name] = 1
 
-        
-
     def __id__(self):
         return self.id
 
+      
+      
 class Equaliser(Searcher):
     def __init__(self, coll, name="Equaliser"):
         super().__init__(name)
@@ -145,6 +147,7 @@ class Equaliser(Searcher):
 
     def __call__(self, records):
         constant_scores = pd.Series([1/len(self.index)]*len(self.index), index=self.index, name=self.id)
+        # constant_scores.loc[records.index] = 1.
         return constant_scores
 
 
@@ -155,6 +158,7 @@ class Randomiser(Searcher):
 
     def __call__(self, records):
         rand_scores = pd.Series(rand.random(size=len(self.index)), index=self.index, name=self.id)
+        # rand_scores.loc[records.index] = 1.
         return rand_scores
 
 
@@ -162,15 +166,16 @@ class GraphSearcher(Searcher):
     @staticmethod
     def iter_values(r):
         for v in r:
+            # if (not v): continue
             if isinstance(v, list): yield from v
             elif isinstance(v, str): yield from v.split("&semi;")
             elif v: yield v
-            else: pass
+            else: continue
     
     def _build(self, collection):
         pbar = tqdm(collection[collection.coll.categorical_cols.values()].fillna("").iterrows(), 
                     total=len(collection), desc='[GraphSearcher]: building graph...')
-        cat_obj_links = [(r.name, v) for i, r in pbar for v in GraphSearcher.iter_values(r)]
+        cat_obj_links = [(r.name, v) for i, r in pbar for v in GraphSearcher.iter_values(r) if v]
         
         pbar = tqdm(collection[collection.coll.categorical_cols.values()].fillna("").iterrows(), 
                     total=len(collection), desc='[GraphSearcher]: building graph...')
@@ -184,6 +189,7 @@ class GraphSearcher(Searcher):
         
         self.obj_nodes = set(coll.index)
         self.G = self._build(coll)
+        self.G.remove_node("onbekend")
 
     
     def __call__(self, records):

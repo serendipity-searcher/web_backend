@@ -247,6 +247,9 @@ class CollectionAccessor:
                             "rights", "attribution"
                             ]
 
+    image_cols = ["path", "width", "height", "dominant_R", "dominant_G", "dominant_B",
+                      "thumb_path", "thumb_width", "thumb_height"]
+
     ordering_cols = time_cols #+ CollectionAccessor.label_cols
 
 
@@ -297,7 +300,8 @@ class CollectionAccessor:
             df = df.join(image_handler._obj, how="left")
             # cls.image_handler = image_handler
         else:
-            df["path"] = ""
+          for c in CollectionAccessor.image_cols:
+            df[c] = ""
 
         assert ("name" in metadata) and ("id_" in metadata) and ("creation_timestamp" in metadata) and ("language" in metadata)
         df.attrs = metadata
@@ -420,9 +424,7 @@ class CollectionAccessor:
     def get_presentation_records(self, object_numbers=None, as_json=True, order_index=None):
         lang = self._obj.attrs["lang"]
 
-        image_cols = ["path", "width", "height", "dominant_R", "dominant_G", "dominant_B",
-                      "thumb_path", "thumb_width", "thumb_height"]
-        sub = self._obj[self.presentation_cols+image_cols].fillna("")
+        sub = self._obj[self.presentation_cols+CollectionAccessor.image_cols].fillna("")
 
         if object_numbers is not None: sub = sub.loc[object_numbers]
 

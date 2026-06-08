@@ -4,7 +4,6 @@ from datetime import datetime
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
-from starlette.middleware.base import BaseHTTPMiddleware
 
 from dotenv import load_dotenv
 load_dotenv()
@@ -24,35 +23,35 @@ from search import Search, Randomiser, Equaliser, GraphSearcher, EmbeddingSearch
 from search import SORT_KIND
 from moon import MOON, Moon
 
-# def init_MKG():
-#     MKG_DIR = "./data/MKG"
-#     image_folder = MKG_DIR+"/images"
-#     image_handler = ImageHandler("MKG", image_folder=image_folder, keep_prefix=False)
-#
-#     # time_stamp, pub_file, priv_file = CollectionAccessor.get_latest_dump("./data/dumps")
-#
-#     time_stamp = "2025-06-05"
-#     mkg_meta = dict(name="Museum Kunst & Gewerbe", id_="MKG_"+time_stamp,
-#                     creation_timestamp=time_stamp, language="de")
-#     df = CollectionAccessor.get_MKG(metadata_path=MKG_DIR+"/dumps/extraction_v0_1.csv",
-#                                     image_handler=image_handler,
-#                                     **mkg_meta)
-#     kg_searcher = GraphSearcher(df)
-#
-#     sem_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
-#                                        loadXD=None)
-#     concept_search = TextEmbeddingSearcher(sem_embs, name="concept-searcher")
-#
-#
-#     sem_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
-#                                        loadXD=32)
-#     sem_searcher = EmbeddingSearcher(sem_embs, name="semantic-searcher")
-#
-#     viz_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/vitmae", loadXD=32)
-#     viz_searcher = EmbeddingSearcher(viz_embs, name="VisualSearcher")
-#
-#     s = Search([kg_searcher, sem_searcher, viz_searcher])
-#     return df, s, concept_search
+def init_MKG():
+    MKG_DIR = "./data/MKG"
+    image_folder = MKG_DIR+"/images"
+    image_handler = ImageHandler("MKG", image_folder=image_folder, keep_prefix=False)
+
+    # time_stamp, pub_file, priv_file = CollectionAccessor.get_latest_dump("./data/dumps")
+
+    time_stamp = "2025-06-05"
+    mkg_meta = dict(name="Museum Kunst & Gewerbe", id_="MKG_"+time_stamp,
+                    creation_timestamp=time_stamp, language="de")
+    df = CollectionAccessor.get_MKG(metadata_path=MKG_DIR+"/dumps/extraction_v0_1.csv",
+                                    image_handler=image_handler,
+                                    **mkg_meta)
+    kg_searcher = GraphSearcher(df)
+    
+    sem_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
+                                       loadXD=None)
+    concept_search = TextEmbeddingSearcher(sem_embs, name="concept-searcher")
+
+
+    sem_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
+                                       loadXD=32)
+    sem_searcher = EmbeddingSearcher(sem_embs, name="semantic-searcher")
+    
+    viz_embs = EmbeddingSpaceAccessor.load(MKG_DIR+"/generated_data/vitmae", loadXD=32)
+    viz_searcher = EmbeddingSearcher(viz_embs, name="VisualSearcher")
+
+    s = Search([kg_searcher, sem_searcher, viz_searcher])
+    return df, s, concept_search
 
 
 
@@ -72,7 +71,7 @@ def init_DMG():
                                      image_handler=image_handler,
                                      **dmg_meta)
 
-    kg_searcher = GraphSearcher(df)
+    kg_searcher = GraphSearcher(df, name="graph-searcher")
 
 
     sem_embs = EmbeddingSpaceAccessor.load(DMG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
@@ -83,7 +82,7 @@ def init_DMG():
     sem_embs = EmbeddingSpaceAccessor.load(DMG_DIR+"/generated_data/distiluse-base-multilingual-cased-v2",
                                        loadXD=32)
     sem_searcher = EmbeddingSearcher(sem_embs, name="semantic-searcher")
-
+    
     viz_embs = EmbeddingSpaceAccessor.load(DMG_DIR+"/generated_data/vitmae", loadXD=32)
     viz_searcher = EmbeddingSearcher(viz_embs, name="visual-searcher")
 
@@ -105,9 +104,9 @@ async def lifespan(app: FastAPI):
     # MKG, MKG_searcher, MKG_concept_search = init_MKG()
 
 
-    collections = [DMG]
-    searches = [DMG_searcher]
-    concept_searches = [DMG_concept_search]
+    collections = [DMG]#, MKG]
+    searches = [DMG_searcher]#, MKG_searcher]
+    concept_searches = [DMG_concept_search]#, MKG_concept_search]
 
     searches = {c.attrs["id_"]: s for c, s in zip(collections, searches)}
     concept_searches = {c.attrs["id_"]: cs for c, cs in zip(collections, concept_searches)}
@@ -120,39 +119,30 @@ async def lifespan(app: FastAPI):
 
 app = FastAPI(lifespan=lifespan)
 
-class VaryOriginMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        response = await call_next(request)
-        response.headers["Vary"] = "Origin"
-        return response
+app.mount("/DMG/images", StaticFiles(directory="data/DMG/images"), name="static_DMG")
+app.mount("/MKG/images", StaticFiles(directory="data/MKG/images"), name="static_DMG")
 
-
-app.add_middleware(VaryOriginMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
+    allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-app.mount("/DMG/images", StaticFiles(directory="data/DMG/images"), name="static_DMG")
-app.mount("/DMG/thumbnails", StaticFiles(directory="data/DMG/thumbnails"), name="static_DMG_thumbnails")
-# app.mount("/MKG/images", StaticFiles(directory="data/MKG/images"), name="static_DMG")
-
 # HELPERS
 def get_collection(collection_id):
+    print(
     if not collection_id in collections:
         raise ValueError(f"{collection_id=} unknown. Available collection IDs are {available_collections()}")
     return collections[collection_id]
 
 def parse_id_list(id_list_str):
-    return list(map(str.strip, id_list_str.split(",")))
+    try:
+        return list(map(str.strip, id_list_str.split(",")))
+    except ValueError:
+        raise s
 
-
-
-@app.get("/", include_in_schema=False)
-def root():
-    return {"message": "OK"}
 
 
 @app.get("/moon")
@@ -171,13 +161,6 @@ def linger_time_multiplier(ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"
 @app.get("/collections")
 def available_collections():
     return [dict(id=c_id, name=c.attrs["name"]) for c_id, c in collections.items()]
-
-
-@app.get("/favicon.ico", include_in_schema=False)
-@app.get("/favicon.ico/", include_in_schema=False)
-def favicon():
-    from fastapi.responses import Response
-    return Response(status_code=204)
 
 
 @app.get("/{collection_id}/")
@@ -214,20 +197,20 @@ def object_details(collection_id, object_ids):
 @app.get("/{collection_id}/default/sample")
 def default_sample(collection_id, k=1, ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"):
     """
-        The `default` family of routes is based on the collection's inherent ordering, namely based on the time (of making) of an object (the actual sort order is fairly complex).
+        The `default` family of routes is based on the collection's inherent ordering, namely based on the time (of making) of an object (the actual sort order is fairly complex). 
 
         The `sample` sub-route samples from this inherent ordering, with sampling weight simply the inverse rank in the order, such that more recent objects are sampled more often (at a linear rate).
 
         :param collection_id: The ID of the current collection (see `/collections`).
         :param k: The number of object records to sample.
-        :return: A list of length `k` of sampled object records.
+        :return: A list of length `k` of sampled object records. 
     """
-
+    
     k = int(k)
     cur_coll = get_collection(collection_id)
     moon_force = get_moon(ISO_8601_datetime, lat_long_degrees=lat_long_degrees)
 
-
+    
     n = len(cur_coll)
     # probs = (n-np.arange(n))+1
     # probs = probs/probs.sum()
@@ -242,18 +225,18 @@ def default_sample(collection_id, k=1, ISO_8601_datetime=None, lat_long_degrees=
     order_index = order_index.loc[sample.index]
 
     return sample.coll.get_presentation_records(as_json=True, order_index=order_index)
-
+    
 
 
 @app.get("/{collection_id}/default/order")
 def default_order(collection_id, skip=None, limit=None, reverse=False, presentation=True):
     """
-        The `default` family of routes is based on the collection's inherent ordering, namely based on the time (of making) of an object (the actual sort order is fairly complex).
+        The `default` family of routes is based on the collection's inherent ordering, namely based on the time (of making) of an object (the actual sort order is fairly complex). 
 
-        The `order` sub-route returns all object records from the given collection in their default collection ordering (which is according to the objects' time).
+        The `order` sub-route returns all object records from the given collection in their default collection ordering (which is according to the objects' time).  
 
         :param collection_id: The ID of the current collection (see `/collections`).
-
+        
         :param skip: If given, the first `skip` object records are skipped
 
         :param limit: If given, the length of the return list of records is limited to `limit` many.
@@ -261,8 +244,8 @@ def default_order(collection_id, skip=None, limit=None, reverse=False, presentat
         :param reverse: If True, then the ordering is reversed (i.e. from earliest object to most recent). Default is False.
 
         :param presentation: (for internal use only)
-
-        :return: A list of length of object records in their default order.
+       
+        :return: A list of length of object records in their default order. 
     """
     reverse = str(reverse).lower() == "true"
 
@@ -283,20 +266,20 @@ def default_order(collection_id, skip=None, limit=None, reverse=False, presentat
     order_index = order_index.iloc[skip:limit]
 
     if presentation:
-        return cur_coll.coll.get_presentation_records(as_json=True, order_index=order_index)
+        return cur_coll.coll.get_presentation_records(as_json=True, order_index=order_index) 
     return cur_coll, order_index
-
+        
 @app.get("/{collection_id}/default/order/filter")
 def default_filter(collection_id, filter_text=None, skip=None, limit=None, reverse=False, presentation=True):
     """
-        The `default` family of routes is based on the collection's inherent ordering, namely based on the time (of making) of an object (the actual sort order is fairly complex).
+        The `default` family of routes is based on the collection's inherent ordering, namely based on the time (of making) of an object (the actual sort order is fairly complex). 
 
         The `filter` sub-route returns all object records from the given collection in their default collection ordering (which is according to the objects' time) and filtered by the `filter_text` parameter (simple string matching with the data fields `objectname_label`, `material_label`, `maker_label`, `coiner_label`, the index (object numbers) and titles and descriptions).
 
         :param collection_id: The ID of the current collection (see `/collections`).
 
         :param filter_text: The text to match object records with, may be a regular expression (Python `re` syntax).
-
+        
         :param skip: If given, the first `skip` object records are skipped
 
         :param limit: If given, the length of the return list of records is limited to `limit` many.
@@ -304,8 +287,8 @@ def default_filter(collection_id, filter_text=None, skip=None, limit=None, rever
         :param reverse: If True, then the ordering is reversed (i.e. from earliest object to most recent). Default is False.
 
         :param presentation: (for internal use only)
-
-        :return: A list of length of object records in their default order.
+       
+        :return: A list of length of object records in their default order. 
     """
     if filter_text is None:
         filter_text = ""
@@ -328,15 +311,15 @@ def default_filter(collection_id, filter_text=None, skip=None, limit=None, rever
 # @app.get("/{collection_id}/random/sample")
 # def random_objects(collection_id, k=1):
 #     """
-#         The `random` family of routes is completely randomised, ignoring any default orderings or search scores and simply assuming a uniform scoring over the collection. E.g. ordering is therefore not a well-defined action for this family.
+#         The `random` family of routes is completely randomised, ignoring any default orderings or search scores and simply assuming a uniform scoring over the collection. E.g. ordering is therefore not a well-defined action for this family. 
 
 #         The `sample` sub-route take a number `k` and randomly samples (at uniform) k object records from the collection.
 
 #         :param collection_id: The ID of the current collection (see `/collections`).
-
+        
 #         :param k: The number of object records to sample.
-
-#         :return: A list of length of object records in their default order.
+        
+#         :return: A list of length of object records in their default order. 
 #     """
 #     k = int(k)
 #     cur_coll = get_collection(collection_id)
@@ -352,16 +335,16 @@ def search_collection(collection_id, object_ids, concept=None, model_ids=None):
         The family of routes has a "parent", as all other routes depend on the scores returned by it. This also implies that all its "children" inherit this functions parameters, as they need to call the parent before doing their own computations.
 
         :param collection_id: The ID of the current collection (see `/collections`).
-
+        
         :param object_ids: A list of object IDs (also called "object numbers" or "catalogue numbers" to search with.
 
         :param concept: A string to search the collection -- titles, descriptions, etc -- with (akin to a search string passed to e.g. Google).
 
         :param model_ids: A list of model IDs (see `/{collection_id}/models`).
-
-        :return: A list of scores for the entire collection according to their relevance to the current search parameters.
+        
+        :return: A list of scores for the entire collection according to their relevance to the current search parameters. 
     """
-
+    
     # if is_cached(collection_id, object_ids, concept, model_ids):
     #     return get_cached(collection_id, object_ids, concept, model_ids)
 
@@ -370,9 +353,9 @@ def search_collection(collection_id, object_ids, concept=None, model_ids=None):
     if (object_ids is None) or not object_ids or len(object_ids) < 1:
         raise ValueError(f"object_ids is required! (at least one ) but was {object_ids}")
 
-
+    
     object_ids = parse_id_list(object_ids)
-
+        
     cur_records = cur_coll.loc[object_ids]
     cur_search = searches[collection_id]
     cur_concept_search = concept_searches[collection_id]
@@ -393,12 +376,13 @@ def search_collection(collection_id, object_ids, concept=None, model_ids=None):
         used_concept = True
 
     if not used_models and not used_concept:
-        scores = Randomiser(cur_coll)(cur_records)
-
+        scores = Equaliser(cur_coll)(cur_records) # USED TO BE: Randomiser(cur_coll)
+    
 
     # diversify(scores)
     # cache_search(object_ids, concept, model_ids, scores)
 
+    scores.loc[object_ids] = 1.
     scores = scores.loc[cur_coll.index.intersection(scores.index)]
     return scores
 
@@ -411,21 +395,21 @@ def sample_collection(collection_id, object_ids, concept=None, model_ids=None,
         The `sample` sub-route of this family samples `k` objects with weights according to the scores return by its parent route `/{collection_id}/search`.
 
         :param collection_id: The ID of the current collection (see `/collections`).
-
+        
         :param object_ids: A list of object IDs (also called "object numbers" or "catalogue numbers" to search with. Passed to its parent.
 
         :param concept: A string to search the collection -- titles, descriptions, etc -- with (akin to a search string passed to e.g. Google). Passed to its parent.
 
-        :param model_ids: A list of model IDs (see `/{collection_id}/models`). Passed to its parent.
+        :param model_ids: A list of model IDs (see `/{collection_id}/models`). Passed to its parent. 
 
         :param ISO_8601_datetime: Used for computing the moon, which influences the sampling weights.
 
         :param lat_long_degrees: Used for computing the moon, which influences the sampling weights.
-
+        
         :return: A list of `k` object records sampled according to the relevance scores computed for the entire collection.
     """
-
-
+    
+    
     cur_coll = get_collection(collection_id)
     cur_search = searches[collection_id]
     moon_force = get_moon(ISO_8601_datetime, lat_long_degrees=lat_long_degrees)
@@ -438,13 +422,13 @@ def sample_collection(collection_id, object_ids, concept=None, model_ids=None,
     # order_index = scores.argsort()
     order_index = pd.Series(range(len(scores)), index=scores.sort_values(ascending=False, kind=SORT_KIND).index)
 
-
+    
     rand_recs = cur_search.sample(cur_coll, scores=scores, temp=moon_force, size=k)
     sample_order_index = order_index.loc[rand_recs.index]
 
     original_recs = cur_coll.loc[parse_id_list(object_ids)]
     original_order_index = order_index.loc[original_recs.index]
-
+    
     return {"original_records": original_recs.coll.get_presentation_records(as_json=True, order_index=original_order_index),
             "sampled_records": rand_recs.coll.get_presentation_records(as_json=True, order_index=sample_order_index)}
 
@@ -463,26 +447,26 @@ def order_collection(collection_id, object_ids, concept=None, model_ids=None,
 
     ordered = cur_search.order(cur_coll, scores)
     order_index = pd.Series(range(len(ordered)), index=ordered.index)
-
+    
     if reverse:
         ordered = ordered.iloc[::-1]
         order_index = order_index.iloc[::-1]
-
+    
     if skip: skip = int(skip)
     if limit: limit = int(limit)
     if skip and limit:
         limit = skip + limit
     ordered = ordered.iloc[skip:limit]
     order_index = order_index.iloc[skip:limit]
-
-    if presentation:
+    
+    if presentation: 
         return ordered.coll.get_presentation_records(as_json=True, order_index=order_index)
     return ordered, order_index
 
 @app.get("/{collection_id}/search/order/indexof")
 def order_index(collection_id, object_ids_index_of, object_ids, concept=None, model_ids=None, reverse=False):
     object_ids_index_of = parse_id_list(object_ids_index_of)
-
+    
     ordered, order_index = order_collection(collection_id, object_ids=object_ids, concept=concept, model_ids=model_ids,
                      skip=None, limit=None, reverse=reverse, presentation=False)
 
@@ -500,19 +484,19 @@ def order_index(collection_id, object_ids_index_of, object_ids, concept=None, mo
     #         raise ValueError("DUPLICATES!?!?! (this should not happen)")
 
     #     cur_indices[i] = int(bools.nonzero()[0][0])
-
+    
     # return cur_indices
 
 
 @app.get("/{collection_id}/search/order/filter")
 def filter_collection(collection_id, object_ids, concept=None, model_ids=None,
                       filter_text=None, skip=None, limit=None, reverse=False):
-
+    
     if filter_text is None: filter_text = ""
-
-    ordered, order_index = order_collection(collection_id, object_ids, concept, model_ids,
+    
+    ordered, order_index = order_collection(collection_id, object_ids, concept, model_ids, 
                                skip=None, limit=None, reverse=reverse, presentation=False)
-
+    
     filtered = ordered.coll.filter(filter_text)
     order_index = order_index.loc[filtered.index]
 
