@@ -132,7 +132,6 @@ app.add_middleware(
 
 # HELPERS
 def get_collection(collection_id):
-    print(
     if not collection_id in collections:
         raise ValueError(f"{collection_id=} unknown. Available collection IDs are {available_collections()}")
     return collections[collection_id]
