@@ -122,7 +122,20 @@ class Search:
         #     sorted_index = sorted_index[::-1]
         return default_ordered_coll.loc[sorted_index]
 
-    
+      # def _swap_to_front(self, recs):
+      #   cur_recs_idx = 
+
+    def _swap_rows(self, df, row_index1, row_index2=None, return_new_order=True):
+        pos_i = [df.index.get_loc(r) for r in row_index1]
+        index2 = row_index2 if (row_index2 is not None) else df.index[:len(row_index1)]
+        pos_j = [df.index.get_loc(i) for i in index2]
+        
+        order = np.arange(len(df))
+        order[pos_i], order[pos_j] = order[pos_j], order[pos_i]
+
+        if return_new_order:
+            return df.iloc[order], order
+        return df.iloc[order]
 class Searcher:
     # serial_number = 0
     known_names = dict()

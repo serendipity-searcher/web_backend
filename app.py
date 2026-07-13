@@ -3,8 +3,6 @@ from datetime import datetime
 
 from fastapi import FastAPI, Query
 from fastapi.middleware.cors import CORSMiddleware
-from starlette.middleware.base import BaseHTTPMiddleware
-
 from fastapi.staticfiles import StaticFiles
 
 from dotenv import load_dotenv
@@ -122,17 +120,8 @@ async def lifespan(app: FastAPI):
 app = FastAPI(lifespan=lifespan)
 
 app.mount("/DMG/images", StaticFiles(directory="data/DMG/images"), name="static_DMG")
-app.mount("/DMG/thumbnails", StaticFiles(directory="data/DMG/thumbnails"), name="static_DMG_thumbnails")
-# app.mount("/MKG/images", StaticFiles(directory="data/MKG/images"), name="static_DMG")
+app.mount("/MKG/images", StaticFiles(directory="data/MKG/images"), name="static_DMG")
 
-class VaryOriginMiddleware(BaseHTTPMiddleware):
-    async def dispatch(self, request, call_next):
-        response = await call_next(request)
-        response.headers["Vary"] = "Origin"
-        return response
-
-
-app.add_middleware(VaryOriginMiddleware)
 app.add_middleware(
     CORSMiddleware,
     allow_origins=["*"],
@@ -392,7 +381,7 @@ def search_collection(collection_id, object_ids, concept=None, model_ids=None):
     # diversify(scores)
     # cache_search(object_ids, concept, model_ids, scores)
 
-    scores.loc[object_ids] = 1.
+    # scores.loc[object_ids] = 1.
     scores = scores.loc[cur_coll.index.intersection(scores.index)]
     return scores
 
@@ -456,8 +445,13 @@ def order_collection(collection_id, object_ids, concept=None, model_ids=None,
     # order_index = get_order_index(scores, rand_recs.index)
 
     ordered = cur_search.order(cur_coll, scores)
-    order_index = pd.Series(range(len(ordered)), index=ordered.index)
-    
+    # order_index = pd.Series(range(len(ordered)), index=ordered.index)
+    object_ids = parse_id_list(object_ids)
+    ordered, order_index = cur_search._swap_rows(ordered, object_ids, row_index2=None, 
+                                    return_new_order=True)
+    order_index = pd.Series(order_index, index=ordered.index)
+
+                                    
     if reverse:
         ordered = ordered.iloc[::-1]
         order_index = order_index.iloc[::-1]
