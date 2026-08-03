@@ -1,7 +1,7 @@
 import os
 from datetime import datetime
 
-from fastapi import FastAPI, Query
+from fastapi import FastAPI, Query, Response
 from fastapi.middleware.cors import CORSMiddleware
 from fastapi.staticfiles import StaticFiles
 
@@ -130,11 +130,16 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
-# HELPERS
+# HELPERS 
 def get_collection(collection_id):
-    if not collection_id in collections:
-        raise ValueError(f"{collection_id=} unknown. Available collection IDs are {available_collections()}")
-    return collections[collection_id]
+    print(collections)
+    if not collections:
+        raise ValueError("collections not initialised yet!")
+    try:
+        return collections[collection_id]
+    except KeyError:
+    # if not collection_id in collections.keys():
+        raise KeyError(f"{collection_id=} unknown. Available collection IDs are {available_collections()}")
 
 def parse_id_list(id_list_str):
     try:
@@ -143,6 +148,14 @@ def parse_id_list(id_list_str):
         raise s
 
 
+@app.get("/", include_in_schema=False)
+def empty_path():
+    return {"message":
+            f"Welcome to SEARCHER! Available collections are: {available_collections()}"}
+    
+@app.get("/favicon.ico", include_in_schema=False)
+async def favicon():
+    return Response(status_code=204)  # No Content
 
 @app.get("/moon")
 def get_moon(ISO_8601_datetime=None, lat_long_degrees="51.05,3.71"): #lat_degrees=51.05, long_degrees=3.71): #location of DMG
@@ -162,7 +175,7 @@ def available_collections():
     return [dict(id=c_id, name=c.attrs["name"]) for c_id, c in collections.items()]
 
 
-@app.get("/{collection_id}/")
+@app.get("/{collection_id}")
 def collection_info(collection_id):
     cur_coll = get_collection(collection_id)
     return cur_coll.coll.info()

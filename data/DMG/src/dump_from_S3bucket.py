@@ -231,8 +231,10 @@ if __name__ == "__main__":
     parser = argparse.ArgumentParser()
     parser.add_argument("--save_path", help="path for saving downloaded images")
     parser.add_argument("--limit", help="only download {limit} many files", type=int)
+    # parser.add_argument("--object_numbers", help="download only images for the given object number; input should be \\n-separated file")
     parser.add_argument("--confirmed", help="pre-confirm download", action="store_true")
     parser.add_argument("--delete_original", help="delete original images after download and downscaling", action="store_true")
+  
     args = parser.parse_args()
 
     if args.save_path:
@@ -269,7 +271,7 @@ if __name__ == "__main__":
     print("\t(1 of 2) downloading images")
     def download_to_path(row, redownload=False):
         return download(save_path, row, redownload=redownload)
-    filenames.apply(download_to_path, axis=1)
+    filenames.progress_apply(download_to_path, axis=1)
 
 
 

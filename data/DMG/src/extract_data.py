@@ -43,6 +43,7 @@ def implode(df, on="object_number", as_string=True, sep="&semi;"):
     return imploded
 
 
+do_implode = True
 
 
 
@@ -113,7 +114,8 @@ if __name__ == "__main__":
     full["part_label"] = full.part_label.replace("https://apidgdv.gent.be/opendata/eventstream-api-private/v1/dmg/", "", regex=True)
     
     full = full[~full.title.fillna("").str.lower().str.startswith("dossier")]
-    full = full[full.object_URI.str.startswith("https://stad.gent/id/mensgemaaktobject/dmg/530")]
+    ### NO LONGER VALID IN V2 -- URIs HAVE CHANGED
+    # full = full[full.object_URI.str.startswith("https://stad.gent/id/mensgemaaktobject/dmg/530")]
     full = full[~(full.object_number.str.endswith(r"_ORANJE") | 
                 full.object_number.str.endswith(r"_ROOD") |
                 full.object_number.str.endswith(r"_ARCHIEF"))]
@@ -132,8 +134,10 @@ if __name__ == "__main__":
     full["is_public"] = bool(args.is_public)
     # full.to_csv(save_name, index=False, quoting=csv.QUOTE_ALL, quotechar='"')
 
-    
-    imploded = implode(full)
+    if do_implode:
+      imploded = implode(full)
+    else:
+      imploded = full
     
     # # this_minute = dt.datetime.today().strftime("%Y-%m-%dT%H-%M")
     imploded.to_csv(save_name, index=False, quoting=csv.QUOTE_ALL, quotechar='"')

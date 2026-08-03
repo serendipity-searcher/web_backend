@@ -14,10 +14,10 @@ import datetime as dt
 k = 1113
 
 params = dict(apiKey="00B12959739EE8AF657D9D31DDEB1E0403D554EBB276B0537AD1",
-              itemsPerPage=k)
+              itemsPerPage=k, fullRecord="true")
               
-base_url = "https://data.designmuseumgent.be/v1/id/"
-private = "private-objects/" # trailing backslash necessary?
+base_url = "https://data.designmuseumgent.be/v2/id/"
+private = "private/objects" # trailing backslash necessary?
 public = "objects"
 
 
@@ -34,12 +34,11 @@ def connect(endpoint, params):
 
 def crawl(endpoint, params): 
     payload = connect(endpoint, params)
-    sleep(1)
+    sleep(0.5)
     # print(payload["hydra:view"]["@id"])
     ## DO SOMETHING HERE
 
-    yield from payload["GecureerdeCollectie.bestaatUit"]
-
+    yield from payload["hydra:member"]
 
     # iterate over pages of payload
     if payload["hydra:view"].get("hydra:next"):
