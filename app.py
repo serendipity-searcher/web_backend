@@ -469,10 +469,15 @@ def order_collection(collection_id, object_ids, concept=None, model_ids=None,
 
     ordered = cur_search.order(cur_coll, scores)
     # order_index = pd.Series(range(len(ordered)), index=ordered.index)
+
     object_ids = parse_id_list(object_ids)
-    ordered, order_index = cur_search._swap_rows(ordered, object_ids, row_index2=None, 
-                                    return_new_order=True)
-    order_index = pd.Series(order_index, index=ordered.index)
+    ordered = cur_search._move_to_front_preserve_order(ordered, object_ids)    
+    # ordered, order_index = cur_search._swap_rows(ordered, object_ids, row_index2=None, 
+    #                                 return_new_order=True)
+    # order_index = pd.Series(order_index, index=ordered.index)
+
+    order_index = pd.Series(range(len(ordered)), index=ordered.index)
+
 
                                     
     if reverse:
